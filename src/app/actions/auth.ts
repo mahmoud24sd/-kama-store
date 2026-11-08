@@ -25,7 +25,22 @@ function friendlyAuthError(message: string): string {
   if (m.includes('already registered') || m.includes('already been registered')) return 'هذا البريد مسجل بالفعل';
   if (m.includes('email not confirmed')) return 'يرجى تأكيد بريدك الإلكتروني أولًا من الرسالة المرسلة إليك';
   if (m.includes('rate limit') || m.includes('too many')) return 'محاولات كثيرة، حاول مرة أخرى بعد قليل';
-  return 'حدث خطأ، حاول مرة أخرى';
+  if (m.includes('invalid api key') || m.includes('apikey')) {
+    return 'إعداد الموقع غير صحيح: مفتاح Supabase (NEXT_PUBLIC_SUPABASE_ANON_KEY) غير صالح';
+  }
+  if (m.includes('database error saving new user')) {
+    return 'تعذّر إنشاء ملف المستخدم في قاعدة البيانات (راجع schema.sql ودالة handle_new_user)';
+  }
+  if (m.includes('error sending') && m.includes('email')) {
+    return 'تم إنشاء الحساب لكن تعذّر إرسال بريد التأكيد. حاول لاحقًا أو اطلب من الدعم تفعيل الحساب';
+  }
+  if (m.includes('signups not allowed') || m.includes('signup is disabled')) return 'التسجيل غير مفعّل حاليًا';
+  if (m.includes('fetch failed') || m.includes('failed to fetch') || m.includes('invalid url')) {
+    return 'تعذّر الاتصال بـ Supabase: تأكد من NEXT_PUBLIC_SUPABASE_URL';
+  }
+  // يظهر السبب الحقيقي ليسهل التشخيص، ويُسجَّل في Vercel Logs
+  console.error('[auth] unexpected error:', message);
+  return `حدث خطأ، حاول مرة أخرى (${message})`;
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {

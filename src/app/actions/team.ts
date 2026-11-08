@@ -32,6 +32,26 @@ export async function promoteToAdmin(formData: FormData) {
   redirect('/admin/team?saved=1');
 }
 
+/** من صفحة المستخدمين: اجعله أدمن مع تحديد صلاحياته (مثل: يشوف المستخدمين والسحب أو لا) في خطوة واحدة */
+export async function makeAdminWithPermissions(formData: FormData) {
+  const { supabase } = await assertOwner();
+  const back = '/admin/users';
+  const id = z.string().uuid().safeParse(formData.get('id'));
+  if (!id.success) fail(back, 'بيانات غير صالحة');
+
+  const { data: target } = await supabase.from('profiles').select('id, role').eq('id', id.data!).maybeSingle();
+  if (!target) fail(back, 'المستخدم غير موجود');
+  if (target!.role !== 'customer') fail(back, 'هذا الحساب أدمن أو مالك بالفعل');
+
+  const permissions = formData.getAll('permissions').map(String).filter((p) => PERMISSION_KEYS.includes(p));
+  const { error } = await supabase.from('profiles').update({ role: 'admin', permissions }).eq('id', id.data!).eq('role', 'customer');
+  if (error) fail(back, 'تعذّرت ترقية المستخدم. تأكد من تشغيل ملف supabase/migrations/001 في Supabase');
+
+  revalidatePath('/admin/users');
+  revalidatePath('/admin/team');
+  redirect(`${back}?saved=1`);
+}
+
 export async function savePermissions(formData: FormData) {
   const { supabase } = await assertOwner();
   const id = z.string().uuid().safeParse(formData.get('id'));

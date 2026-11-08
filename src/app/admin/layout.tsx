@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BarChart3, Boxes, Layers, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Users, Wallet } from 'lucide-react';
+import { BarChart3, Boxes, Layers, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, UserCog, Users, Wallet } from 'lucide-react';
 import { requireAdmin } from '@/lib/auth';
 import { hasPermission, type Permission } from '@/lib/permissions';
 
@@ -19,6 +19,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/customers', label: 'العملاء', icon: Users, perm: 'users' },
   { href: '/admin/reviews', label: 'التقييمات', icon: Star },
   { href: '/admin/earnings', label: 'الأرباح والسحب', icon: Wallet, perm: 'withdraw' },
+  { href: '/admin/users', label: 'المستخدمون', icon: UserCog, owner: true },
   { href: '/admin/team', label: 'الفريق والصلاحيات', icon: ShieldCheck, owner: true },
   { href: '/admin/settings', label: 'إعدادات التواصل', icon: Settings, owner: true },
 ];

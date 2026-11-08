@@ -5,11 +5,12 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { CartProvider } from '@/components/cart/CartProvider';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { getSiteUrl } from '@/lib/site';
 
 const cairo = Cairo({ subsets: ['arabic', 'latin'], variable: '--font-cairo', display: 'swap' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(getSiteUrl()),
   title: { default: 'Kama Store — تسوق أونلاين', template: '%s | Kama Store' },
   description: 'Kama Store: متجر إلكتروني لكل احتياجاتك بأسعار مميزة وشحن سريع.',
 };

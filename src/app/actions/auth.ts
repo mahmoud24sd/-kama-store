@@ -3,10 +3,11 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { getSiteUrl } from '@/lib/site';
 
 export type FormState = { error?: string; message?: string };
 
-const siteUrl = () => process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+const siteUrl = () => getSiteUrl();
 
 const passwordSchema = z
   .string()

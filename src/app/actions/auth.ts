@@ -19,6 +19,8 @@ function safeNext(raw: FormDataEntryValue | null): string {
   return next.startsWith('/') && !next.startsWith('//') ? next : '/';
 }
 
+const GENERIC_ERROR = 'تعذّر إكمال الطلب الآن. يرجى المحاولة بعد قليل، وإن استمر الأمر تواصل مع الدعم.';
+
 function friendlyAuthError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('invalid login')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
@@ -38,10 +40,15 @@ function friendlyAuthError(message: string): string {
   if (m.includes('fetch failed') || m.includes('failed to fetch') || m.includes('invalid url')) {
     return 'تعذّر الاتصال بـ Supabase: تأكد من NEXT_PUBLIC_SUPABASE_URL';
   }
-  // يظهر السبب الحقيقي ليسهل التشخيص، ويُسجَّل في Vercel Logs
+  if (m.includes('bytestring')) {
+    return 'إعداد الموقع غير صحيح: إحدى قيم Supabase في Vercel تحتوي على حروف غير مسموحة';
+  }
+  // السبب الحقيقي يُسجَّل في Vercel Logs فقط ولا يُعرض للزائر
   console.error('[auth] unexpected error:', message);
-  return `حدث خطأ، حاول مرة أخرى (${message})`;
+  return GENERIC_ERROR;
 }
+
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
@@ -49,9 +56,13 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     .safeParse({ email: formData.get('email'), password: formData.get('password') });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: friendlyAuthError(error.message) };
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    if (error) return { error: friendlyAuthError(error.message) };
+  } catch (e) {
+    return { error: friendlyAuthError(errMsg(e)) };
+  }
 
   redirect(safeNext(formData.get('next')));
 }
@@ -73,19 +84,25 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: { full_name: parsed.data.full_name },
-      emailRedirectTo: `${siteUrl()}/auth/callback`,
-    },
-  });
-  if (error) return { error: friendlyAuthError(error.message) };
+  let hasSession = false;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        data: { full_name: parsed.data.full_name },
+        emailRedirectTo: `${siteUrl()}/auth/callback`,
+      },
+    });
+    if (error) return { error: friendlyAuthError(error.message) };
+    hasSession = Boolean(data.session);
+  } catch (e) {
+    return { error: friendlyAuthError(errMsg(e)) };
+  }
 
   // إذا كان تأكيد البريد مفعّلًا في Supabase لن تكون هناك جلسة بعد
-  if (!data.session) {
+  if (!hasSession) {
     return { message: 'تم إنشاء الحساب. أرسلنا رسالة تأكيد إلى بريدك، افتحها لتفعيل الحساب ثم سجّل الدخول.' };
   }
   redirect(safeNext(formData.get('next')));
@@ -101,10 +118,14 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   const parsed = z.string().email('بريد إلكتروني غير صالح').safeParse(formData.get('email'));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const supabase = await createClient();
-  await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${siteUrl()}/auth/callback?next=/auth/reset`,
-  });
+  try {
+    const supabase = await createClient();
+    await supabase.auth.resetPasswordForEmail(parsed.data, {
+      redirectTo: `${siteUrl()}/auth/callback?next=/auth/reset`,
+    });
+  } catch (e) {
+    console.error('[auth] reset error:', errMsg(e));
+  }
   // نفس الرد دائمًا حتى لا نكشف وجود البريد من عدمه
   return { message: 'إذا كان البريد مسجلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور.' };
 }
@@ -116,13 +137,17 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
     .safeParse({ password: formData.get('password'), confirm: formData.get('confirm') });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: 'انتهت صلاحية الرابط. اطلب رابطًا جديدًا.' };
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: 'انتهت صلاحية الرابط. اطلب رابطًا جديدًا.' };
 
-  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) return { error: friendlyAuthError(error.message) };
+    const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+    if (error) return { error: friendlyAuthError(error.message) };
+  } catch (e) {
+    return { error: friendlyAuthError(errMsg(e)) };
+  }
   redirect('/account?updated=1');
 }

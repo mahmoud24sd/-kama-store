@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { Facebook, Instagram, Mail, MessageCircle, Phone } from 'lucide-react';
 import Logo from './Logo';
+import { TikTokIcon } from './SocialIcons';
+import { getContactSettings, whatsappLink } from '@/lib/settings';
 
-export default function Footer() {
-  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
-  const phone = process.env.NEXT_PUBLIC_CONTACT_PHONE;
-  const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_URL;
-  const facebook = process.env.NEXT_PUBLIC_FACEBOOK_URL;
-  const instagram = process.env.NEXT_PUBLIC_INSTAGRAM_URL;
-  const hasContact = Boolean(email || phone || whatsapp || facebook || instagram);
+export default async function Footer() {
+  const c = await getContactSettings();
+  const { email, phone, facebook, instagram, tiktok } = c;
+  const whatsapp = c.whatsapp ? whatsappLink(c.whatsapp) : '';
+  const hasContact = Boolean(email || phone || whatsapp || facebook || instagram || tiktok);
 
   return (
     <footer className="mt-10 text-sm text-gray-300">
@@ -82,9 +82,16 @@ export default function Footer() {
                     </a>
                   </li>
                 )}
+                {tiktok && (
+                  <li>
+                    <a href={tiktok} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white">
+                      <TikTokIcon className="h-4 w-4" /> تيك توك
+                    </a>
+                  </li>
+                )}
               </ul>
             ) : (
-              <p className="text-gray-400">أضف بيانات التواصل في ملف البيئة لتظهر هنا.</p>
+              <p className="text-gray-400">سيتم إضافة بيانات التواصل قريبًا.</p>
             )}
           </div>
         </div>

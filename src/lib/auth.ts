@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Profile } from '@/lib/types';
+import { hasPermission, isStaff, type Permission } from '@/lib/permissions';
 
 /** المستخدم الحالي — يتحقق من التوكن عبر Supabase Auth (وليس من الكوكي فقط) */
 export const getUser = cache(async () => {
@@ -26,20 +27,46 @@ export async function requireUser(next = '/') {
   return user;
 }
 
-/** للصفحات: غير المدير يُعاد توجيهه. ترجع عميل Supabase بصلاحيات المدير (RLS ما زال مطبّقًا) */
+/** للصفحات: غير الموظف (أدمن أو مالك) يُعاد توجيهه. ترجع عميل Supabase بصلاحيات المستخدم (RLS ما زال مطبّقًا) */
 export async function requireAdmin() {
   const user = await requireUser('/admin');
   const profile = await getProfile();
-  if (!profile || profile.role !== 'admin') redirect('/');
+  if (!profile || !isStaff(profile)) redirect('/');
   const supabase = await createClient();
   return { user, profile, supabase };
 }
 
-/** للـ Server Actions: يرمي خطأ بدل إعادة التوجيه، فلا ينفَّذ أي تعديل لغير المدير */
+/** للصفحات التي تحتاج صلاحية محددة. بدونها يُعاد التوجيه لصفحة الطلبات */
+export async function requirePermission(perm: Permission) {
+  const ctx = await requireAdmin();
+  if (!hasPermission(ctx.profile, perm)) redirect('/admin/orders');
+  return ctx;
+}
+
+/** صفحات المالك فقط */
+export async function requireOwner() {
+  const ctx = await requireAdmin();
+  if (ctx.profile.role !== 'owner') redirect('/admin');
+  return ctx;
+}
+
+/** للـ Server Actions: يرمي خطأ بدل إعادة التوجيه، فلا ينفَّذ أي تعديل لغير المصرّح له */
 export async function assertAdmin() {
   const user = await getUser();
   const profile = user ? await getProfile() : null;
-  if (!user || !profile || profile.role !== 'admin') throw new Error('FORBIDDEN');
+  if (!user || !profile || !isStaff(profile)) throw new Error('FORBIDDEN');
   const supabase = await createClient();
   return { user, profile, supabase };
+}
+
+export async function assertPermission(perm: Permission) {
+  const ctx = await assertAdmin();
+  if (!hasPermission(ctx.profile, perm)) throw new Error('FORBIDDEN');
+  return ctx;
+}
+
+export async function assertOwner() {
+  const ctx = await assertAdmin();
+  if (ctx.profile.role !== 'owner') throw new Error('FORBIDDEN');
+  return ctx;
 }

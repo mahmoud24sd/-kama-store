@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { ImageOff } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import type { Order } from '@/lib/types';
+import OrderTimeline from '@/components/orders/OrderTimeline';
+import type { Order, OrderEvent } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { ORDER_STATUS_COLOR, ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, ui } from '@/lib/ui';
 
@@ -19,6 +20,17 @@ export default async function OrdersPage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   const orders = (data ?? []) as unknown as Order[];
+
+  // مراحل كل طلب (تُجلب بشكل منفصل حتى لا تتعطل الصفحة لو الجدول غير جاهز)
+  const eventsByOrder = new Map<string, OrderEvent[]>();
+  if (orders.length > 0) {
+    const { data: ev } = await supabase
+      .from('order_events')
+      .select('*')
+      .in('order_id', orders.map((o) => o.id))
+      .order('created_at', { ascending: true });
+    ((ev ?? []) as OrderEvent[]).forEach((e) => eventsByOrder.set(e.order_id, [...(eventsByOrder.get(e.order_id) ?? []), e]));
+  }
 
   return (
     <div>
@@ -58,6 +70,20 @@ export default async function OrdersPage() {
                   </li>
                 ))}
               </ul>
+              {o.status === 'delivered' && (
+                <p className="border-t border-green-100 bg-green-50 px-4 py-2 text-sm font-bold text-green-700">
+                  ✓ تم تسليم هذا الطلب{(() => {
+                    const done = (eventsByOrder.get(o.id) ?? []).filter((e) => e.status === 'delivered').slice(-1)[0];
+                    return done ? ` بتاريخ ${formatDate(done.created_at)}` : '';
+                  })()}
+                </p>
+              )}
+              <details className="border-t border-gray-100 px-4 py-2 text-sm">
+                <summary className="cursor-pointer font-semibold text-brand-700">تتبع الطلب</summary>
+                <div className="mt-3">
+                  <OrderTimeline createdAt={o.created_at} events={eventsByOrder.get(o.id) ?? []} />
+                </div>
+              </details>
               <p className="border-t border-gray-100 px-4 py-2 text-xs text-gray-500">
                 الشحن إلى: {o.ship_name}، {o.ship_line1}، {o.ship_city}، {o.ship_governorate}
               </p>

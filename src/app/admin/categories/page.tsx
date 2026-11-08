@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { deleteCategory, saveCategory } from '@/app/actions/admin';
 import { getCategories } from '@/lib/queries';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'الأقسام' };
 
 export default async function AdminCategories({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  await requireAdmin();
+  await requirePermission('categories');
   const [categories, sp] = await Promise.all([getCategories(), searchParams]);
 
   return (

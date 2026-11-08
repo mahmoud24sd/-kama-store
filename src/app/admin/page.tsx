@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { AlertTriangle, DollarSign, Package, ShoppingBag, Users } from 'lucide-react';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import type { Order } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { ORDER_STATUS_COLOR, ORDER_STATUS_LABEL, ui } from '@/lib/ui';
@@ -16,7 +16,7 @@ type Stats = {
 };
 
 export default async function AdminDashboard() {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requirePermission('dashboard');
   const [{ data: stats, error }, { data: recent }] = await Promise.all([
     supabase.rpc('admin_stats'),
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(8),

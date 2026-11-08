@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { deleteCoupon, saveCoupon, toggleCoupon } from '@/app/actions/admin';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import type { Coupon } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -8,7 +8,7 @@ import { ui } from '@/lib/ui';
 export const metadata: Metadata = { title: 'الكوبونات' };
 
 export default async function AdminCoupons({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requirePermission('coupons');
   const sp = await searchParams;
   const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
   const coupons = (data ?? []) as Coupon[];

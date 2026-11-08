@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { assertAdmin } from '@/lib/auth';
+import { assertAdmin, assertPermission } from '@/lib/auth';
 import { slugify, toNumber } from '@/lib/utils';
 
 const BUCKET = 'product-images';
@@ -164,7 +164,7 @@ export async function deleteProduct(formData: FormData) {
 /* ───────────────────────── الأقسام ───────────────────────── */
 
 export async function saveCategory(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('categories');
   const parsed = z
     .object({
       id: z.string().uuid().optional().or(z.literal('')),
@@ -193,7 +193,7 @@ export async function saveCategory(formData: FormData) {
 }
 
 export async function deleteCategory(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('categories');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('categories').delete().eq('id', id.data);
@@ -249,29 +249,44 @@ export async function saveOffer(formData: FormData) {
 /* ───────────────────────── الطلبات ───────────────────────── */
 
 export async function updateOrderStatus(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase, profile } = await assertAdmin();
   const parsed = z
     .object({
       id: z.string().uuid(),
       status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']),
       payment_status: z.enum(['unpaid', 'paid', 'failed', 'refunded']),
+      note: z.string().trim().max(300).optional(),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) fail('/admin/orders', 'بيانات غير صالحة');
   const d = parsed.data!;
 
+  const { data: before } = await supabase.from('orders').select('status').eq('id', d.id).maybeSingle();
+
   const { error } = await supabase.from('orders').update({ status: d.status, payment_status: d.payment_status }).eq('id', d.id);
   if (error) fail(`/admin/orders/${d.id}`, 'تعذر تحديث الطلب');
   await supabase.from('payments').update({ status: d.payment_status }).eq('order_id', d.id);
 
+  // سجّل مرحلة جديدة يراها العميل (تغيّرت الحالة أو أُضيفت ملاحظة تسليم). لا نفشل الطلب لو الجدول غير جاهز
+  if (before?.status !== d.status || d.note) {
+    await supabase.from('order_events').insert({
+      order_id: d.id,
+      status: d.status,
+      note: d.note || null,
+      created_by: profile.id,
+      created_by_name: profile.full_name || profile.email,
+    });
+  }
+
   revalidatePath('/admin/orders');
+  revalidatePath('/account/orders');
   redirect(`/admin/orders/${d.id}?saved=1`);
 }
 
 /* ───────────────────────── الكوبونات ───────────────────────── */
 
 export async function saveCoupon(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('coupons');
   const parsed = z
     .object({
       code: z.string().trim().min(3, 'الكود 3 أحرف على الأقل').max(40).regex(/^[A-Za-z0-9_-]+$/, 'الكود: حروف إنجليزية وأرقام فقط'),
@@ -308,7 +323,7 @@ export async function saveCoupon(formData: FormData) {
 }
 
 export async function toggleCoupon(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('coupons');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('coupons').update({ is_active: formData.get('is_active') === 'true' }).eq('id', id.data);
@@ -316,7 +331,7 @@ export async function toggleCoupon(formData: FormData) {
 }
 
 export async function deleteCoupon(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('coupons');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('coupons').delete().eq('id', id.data);

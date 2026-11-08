@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { updateOrderStatus } from '@/app/actions/admin';
 import { requireAdmin } from '@/lib/auth';
-import type { Order } from '@/lib/types';
+import OrderTimeline from '@/components/orders/OrderTimeline';
+import type { Order, OrderEvent } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, ui } from '@/lib/ui';
 
@@ -24,6 +25,8 @@ export default async function AdminOrderDetail({
   const { data } = await supabase.from('orders').select('*, order_items(*)').eq('id', id).maybeSingle();
   if (!data) notFound();
   const order = data as unknown as Order;
+  const { data: eventRows } = await supabase.from('order_events').select('*').eq('order_id', id).order('created_at', { ascending: true });
+  const events = (eventRows ?? []) as OrderEvent[];
 
   return (
     <div className="space-y-5">
@@ -60,11 +63,20 @@ export default async function AdminOrderDetail({
                 {Object.entries(PAYMENT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
-            <p className="text-xs text-gray-500">عند اختيار «ملغي» يُعاد المخزون تلقائيًا.</p>
+            <div>
+              <label className={ui.label} htmlFor="note">ملاحظة التسليم (اسم المندوب / تفاصيل) — تظهر للعميل</label>
+              <input id="note" name="note" maxLength={300} placeholder="مثال: سلّمه المندوب أحمد للعميل" className={ui.input} />
+            </div>
+            <p className="text-xs text-gray-500">عند اختيار «ملغي» يُعاد المخزون تلقائيًا. عند ضغط المندوب على «تم التسليم» اختر الحالة «تم التسليم» واحفظ.</p>
             <button className={ui.btnDark}>حفظ</button>
           </form>
         </section>
       </div>
+
+      <section className="rounded-xl border border-gray-200 p-4">
+        <h2 className="mb-3 font-bold">مراحل الطلب (كما يراها العميل)</h2>
+        <OrderTimeline createdAt={order.created_at} events={events} />
+      </section>
 
       <section>
         <h2 className="mb-2 font-bold">المنتجات</h2>

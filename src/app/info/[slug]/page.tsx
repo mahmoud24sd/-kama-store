@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { getContactSettings, whatsappLink } from '@/lib/settings';
 
 // ⚠️ نصوص أولية عامة. راجعها مع مستشار قانوني وعدّلها بما يناسب نشاطك قبل الإطلاق.
 const PAGES: Record<string, { title: string; body: string[] }> = {
@@ -44,20 +45,23 @@ export default async function InfoPage({ params }: Props) {
   const { slug } = await params;
 
   if (slug === 'contact') {
-    const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
-    const phone = process.env.NEXT_PUBLIC_CONTACT_PHONE;
-    const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_URL;
+    const c = await getContactSettings();
+    const wa = c.whatsapp ? whatsappLink(c.whatsapp) : '';
+    const has = Boolean(c.email || c.phone || wa || c.facebook || c.instagram || c.tiktok);
     return (
       <article className="mx-auto max-w-2xl rounded-xl bg-white p-6 shadow-sm">
         <h1 className="mb-4 text-2xl font-extrabold">تواصل معنا</h1>
-        {email || phone || whatsapp ? (
+        {has ? (
           <ul className="space-y-3 text-gray-700">
-            {email && <li>البريد الإلكتروني: <a className="font-semibold text-brand-600" href={`mailto:${email}`} dir="ltr">{email}</a></li>}
-            {phone && <li>الهاتف: <a className="font-semibold text-brand-600" href={`tel:${phone}`} dir="ltr">{phone}</a></li>}
-            {whatsapp && <li><a className="font-semibold text-brand-600" href={whatsapp} target="_blank" rel="noopener noreferrer">راسلنا على واتساب</a></li>}
+            {c.phone && <li>الهاتف: <a className="font-semibold text-brand-600" href={`tel:${c.phone}`} dir="ltr">{c.phone}</a></li>}
+            {wa && <li><a className="font-semibold text-brand-600" href={wa} target="_blank" rel="noopener noreferrer">راسلنا على واتساب</a></li>}
+            {c.email && <li>البريد الإلكتروني: <a className="font-semibold text-brand-600" href={`mailto:${c.email}`} dir="ltr">{c.email}</a></li>}
+            {c.facebook && <li><a className="font-semibold text-brand-600" href={c.facebook} target="_blank" rel="noopener noreferrer">صفحتنا على فيسبوك</a></li>}
+            {c.instagram && <li><a className="font-semibold text-brand-600" href={c.instagram} target="_blank" rel="noopener noreferrer">حسابنا على إنستجرام</a></li>}
+            {c.tiktok && <li><a className="font-semibold text-brand-600" href={c.tiktok} target="_blank" rel="noopener noreferrer">حسابنا على تيك توك</a></li>}
           </ul>
         ) : (
-          <p className="text-gray-600">لم تُضف بيانات التواصل بعد. أضفها في متغيرات البيئة (NEXT_PUBLIC_CONTACT_EMAIL / PHONE / WHATSAPP_URL).</p>
+          <p className="text-gray-600">سيتم إضافة بيانات التواصل قريبًا.</p>
         )}
       </article>
     );

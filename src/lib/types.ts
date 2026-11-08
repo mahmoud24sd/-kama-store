@@ -58,7 +58,17 @@ export type Profile = {
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  role: 'customer' | 'admin';
+  role: 'customer' | 'admin' | 'owner';
+  permissions?: string[] | null;
+  created_at: string;
+};
+
+export type OrderEvent = {
+  id: string;
+  order_id: string;
+  status: string;
+  note: string | null;
+  created_by_name: string | null;
   created_at: string;
 };
 

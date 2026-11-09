@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
+import { confirmStaleAccount, createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { getSiteUrl } from '@/lib/site';
 import { GOVERNORATES, normalizeEgyptPhone } from '@/lib/governorates';
 
@@ -28,7 +28,7 @@ function friendlyAuthError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('invalid login')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
   if (m.includes('already registered') || m.includes('already been registered') || m.includes('already exists')) return 'هذا البريد مسجل بالفعل';
-  if (m.includes('email not confirmed')) return 'يرجى تأكيد بريدك الإلكتروني أولًا من الرسالة المرسلة إليك';
+  if (m.includes('email not confirmed')) return 'حسابك لم يُفعَّل بعد. تواصل مع الدعم لتفعيله';
   if (m.includes('rate limit') || m.includes('too many')) return 'محاولات كثيرة، حاول مرة أخرى بعد قليل';
   if (m.includes('invalid api key') || m.includes('apikey')) {
     return 'إعداد الموقع غير صحيح: مفتاح Supabase (NEXT_PUBLIC_SUPABASE_ANON_KEY) غير صالح';
@@ -61,7 +61,11 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 
   try {
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    let { error } = await supabase.auth.signInWithPassword(parsed.data);
+    // حساب قديم لم يُؤكَّد بسبب فشل البريد: نؤكده ونعيد المحاولة مرة واحدة
+    if (error?.message.toLowerCase().includes('email not confirmed') && (await confirmStaleAccount(parsed.data.email))) {
+      ({ error } = await supabase.auth.signInWithPassword(parsed.data));
+    }
     if (error) return { error: friendlyAuthError(error.message) };
   } catch (e) {
     return { error: friendlyAuthError(errMsg(e)) };
@@ -108,7 +112,12 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
         email_confirm: true,
         user_metadata: meta,
       });
-      if (createError) return { error: friendlyAuthError(createError.message) };
+      if (createError) {
+        const exists = /already|exists|registered/i.test(createError.message);
+        // بريد سُجّل في محاولة سابقة فشلت ولم يُؤكَّد: نكمل التسجيل عليه بدل رسالة «مسجل بالفعل»
+        const fixed = exists && (await confirmStaleAccount(parsed.data.email, { password: parsed.data.password, ...meta }));
+        if (!fixed) return { error: friendlyAuthError(createError.message) };
+      }
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: parsed.data.email,
         password: parsed.data.password,

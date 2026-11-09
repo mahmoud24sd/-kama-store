@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { confirmStaleAccount, createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { getSiteUrl } from '@/lib/site';
-import { GOVERNORATES, normalizeEgyptPhone } from '@/lib/governorates';
+import { GOVERNORATES, normalizeInternationalPhone } from '@/lib/governorates';
 
 export type FormState = { error?: string; message?: string };
 
@@ -79,10 +79,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     .object({
       full_name: z.string().min(2, 'أدخل اسمك الكامل').max(100),
       email: z.string().trim().email('بريد إلكتروني غير صالح'),
-      phone: z
-        .string()
-        .transform((v) => normalizeEgyptPhone(v))
-        .refine((v): v is string => v !== null, 'أدخل رقم موبايل مصري صحيح مثل 01012345678'),
+      phone: z.string().min(1, 'أدخل رقم هاتف صحيح واختر الدولة'),
       governorate: z.enum(GOVERNORATES, { errorMap: () => ({ message: 'اختر المحافظة' }) }),
       password: passwordSchema,
       confirm: z.string(),
@@ -91,7 +88,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     .safeParse({
       full_name: formData.get('full_name'),
       email: formData.get('email'),
-      phone: String(formData.get('phone') ?? ''),
+      phone: normalizeInternationalPhone(String(formData.get('phone_country') ?? '20'), String(formData.get('phone') ?? '')) ?? '',
       governorate: formData.get('governorate'),
       password: formData.get('password'),
       confirm: formData.get('confirm'),

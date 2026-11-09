@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { requestPasswordReset, signIn, signUp, updatePassword, type FormState } from '@/app/actions/auth';
 import { ui } from '@/lib/ui';
 import { GOVERNORATES } from '@/lib/governorates';
-import SocialButtons from './SocialButtons';
+import { COUNTRIES } from '@/lib/countries';
 
 const initial: FormState = {};
 
@@ -22,7 +22,6 @@ export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signIn, initial);
   return (
     <div className="space-y-4">
-    <SocialButtons next={next} />
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
       <div>
@@ -50,7 +49,6 @@ export function RegisterForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signUp, initial);
   return (
     <div className="space-y-4">
-    <SocialButtons next={next} />
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
       <div>
@@ -63,7 +61,14 @@ export function RegisterForm({ next }: { next: string }) {
       </div>
       <div>
         <label htmlFor="phone" className={ui.label}>رقم الموبايل</label>
-        <input id="phone" name="phone" type="tel" required inputMode="tel" autoComplete="tel" dir="ltr" placeholder="01012345678" className={ui.input} />
+        <div className="flex gap-2" dir="ltr">
+          <select name="phone_country" aria-label="الدولة" defaultValue="20" className={`${ui.input} !w-40 shrink-0`}>
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.dial}>{c.name} (+{c.dial})</option>
+            ))}
+          </select>
+          <input id="phone" name="phone" type="tel" required inputMode="tel" autoComplete="tel-national" placeholder="1012345678" className={ui.input} />
+        </div>
       </div>
       <div>
         <label htmlFor="governorate" className={ui.label}>المحافظة</label>

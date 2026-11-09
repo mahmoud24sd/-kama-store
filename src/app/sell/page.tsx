@@ -37,7 +37,7 @@ export default async function SellPage({ searchParams }: { searchParams: Promise
         <h1 className="text-2xl font-extrabold">منتجاتي</h1>
         <Link href="/sell/new" className={ui.btnPrimary}>+ إضافة منتج</Link>
       </div>
-      <p className="text-sm text-gray-600">انشر منتجك في متجرنا برسم {fee} جنيه فقط عبر InstaPay. احفظ منتجك كمسودة، وعند الجاهزية اضغط «نشر المنتج».</p>
+      <p className="text-sm text-gray-600">انشر منتجك في متجرنا برسم {fee} جنيه فقط عبر InstaPay أو محفظة. احفظ منتجك كمسودة، وعند الجاهزية اضغط «نشر المنتج».</p>
       {sp.submitted && <p className={ui.alertOk}>وصلنا طلب النشر. سنراجع الدفع وننشر المنتج بعد التأكيد.</p>}
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
       {!hasServiceRole && <p className={ui.alertError}>خدمة نشر المنتجات غير مفعّلة بعد من إعدادات الموقع.</p>}

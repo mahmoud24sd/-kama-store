@@ -48,12 +48,12 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
       </form>
 
       <hr className="my-6" />
-      <h2 className="text-lg font-extrabold">نشر منتجات الغير (InstaPay)</h2>
-      <p className="text-sm text-gray-600">من يريد نشر منتج عندنا يحوّل الرسم إلى هذا الحساب ثم يرسل رقم العملية، وتؤكده أنت (أو أدمن لديه صلاحية «تأكيد دفع نشر المنتجات») من صفحة «طلبات النشر».</p>
+      <h2 className="text-lg font-extrabold">نشر منتجات الغير (InstaPay / محفظة)</h2>
+      <p className="text-sm text-gray-600">من يريد نشر منتج عندنا يحوّل الرسم إلى أحد هذه الحسابات ثم يرسل رقم العملية، وتؤكده أنت (أو أدمن لديه صلاحية «تأكيد دفع نشر المنتجات») من صفحة «طلبات النشر».</p>
       <form action={savePublishSettings} className="space-y-3">
         <div>
-          <label className={ui.label} htmlFor="instapay">حساب InstaPay (عنوان الدفع أو رقم الهاتف)</label>
-          <input id="instapay" name="instapay" defaultValue={pub.instapay} dir="ltr" placeholder="name@instapay أو 01012345678" className={ui.input} />
+          <label className={ui.label} htmlFor="instapay">حسابات استلام الرسم (InstaPay أو محفظة) — سطر لكل حساب</label>
+          <textarea id="instapay" name="instapay" rows={3} defaultValue={pub.instapay} dir="ltr" placeholder={'InstaPay: name@instapay\nفودافون كاش: 01012345678'} className={ui.input} />
         </div>
         <div>
           <label className={ui.label} htmlFor="fee">رسم نشر المنتج (ج.م)</label>

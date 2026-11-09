@@ -119,7 +119,7 @@ export async function savePublishSettings(formData: FormData) {
   const { supabase } = await assertOwner();
   const parsed = z
     .object({
-      instapay: z.string().trim().max(100),
+      instapay: z.string().trim().max(400),
       fee: z.coerce.number().min(0, 'الرسم غير صالح').max(100000),
     })
     .safeParse({ instapay: formData.get('instapay') ?? '', fee: formData.get('fee') });

@@ -37,13 +37,13 @@ export default async function PublishPage({
 
       <div className={`${ui.card} space-y-3 p-4`}>
         <ol className="list-decimal space-y-2 pe-5 text-sm leading-7">
-          <li>افتح تطبيق <b>InstaPay</b> وحوّل مبلغ <b>{fee} جنيه</b> إلى:
-            <div className="my-1 rounded-lg bg-gray-50 p-2 text-center text-base font-extrabold" dir="ltr">{instapay || 'لم يحدد المالك الحساب بعد'}</div>
+          <li>حوّل مبلغ <b>{fee} جنيه</b> عبر <b>InstaPay</b> أو <b>محفظتك</b> (فودافون كاش وغيرها) إلى أحد الحسابات التالية:
+            <div className="my-1 whitespace-pre-line rounded-lg bg-gray-50 p-2 text-center text-base font-extrabold" dir="auto">{instapay || 'لم يحدد المالك الحساب بعد'}</div>
           </li>
           <li>انسخ <b>رقم العملية</b> (Reference Number) الذي يظهر بعد التحويل.</li>
           <li>اكتبه أدناه وأرسل الطلب. بعد أن نتأكد من وصول التحويل ينشر المنتج.</li>
         </ol>
-        {!instapay && <p className={ui.alertError}>حساب InstaPay غير مضبوط بعد. تواصل معنا قبل التحويل{wa ? ' عبر واتساب' : ''}.</p>}
+        {!instapay && <p className={ui.alertError}>حساب الدفع غير مضبوط بعد. تواصل معنا قبل التحويل{wa ? ' عبر واتساب' : ''}.</p>}
       </div>
 
       <form action={submitPublishRequest} className="space-y-3">

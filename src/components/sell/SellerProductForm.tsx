@@ -61,7 +61,7 @@ export default function SellerProductForm({ product, categories, fee }: { produc
       </div>
 
       <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
-        «حفظ التغييرات» يحفظ المنتج كمسودة لا تظهر للعملاء. «نشر المنتج» ينقلك لدفع رسم النشر <b>{fee} جنيه</b> عبر InstaPay، ويظهر المنتج في المتجر بعد تأكيد الدفع.
+        «حفظ التغييرات» يحفظ المنتج كمسودة لا تظهر للعملاء. «نشر المنتج» ينقلك لدفع رسم النشر <b>{fee} جنيه</b> عبر InstaPay أو محفظة، ويظهر المنتج في المتجر بعد تأكيد الدفع.
       </div>
 
       <div className="flex flex-wrap gap-3">

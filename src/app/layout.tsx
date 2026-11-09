@@ -3,6 +3,7 @@ import { Cairo } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import SafeBoundary from '@/components/SafeBoundary';
 import StaffChatNotifier from '@/components/chat/StaffChatNotifier';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { CartProvider } from '@/components/cart/CartProvider';
@@ -29,8 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Header />
             <main className="mx-auto min-h-[60vh] max-w-7xl px-3 py-4">{children}</main>
             <Footer />
-            <ChatWidget />
-            <StaffChatNotifier />
+            <SafeBoundary><ChatWidget /></SafeBoundary>
+            <SafeBoundary><StaffChatNotifier /></SafeBoundary>
           </CartProvider>
         ) : (
           <SetupNotice />

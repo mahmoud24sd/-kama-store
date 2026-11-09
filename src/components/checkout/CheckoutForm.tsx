@@ -13,6 +13,7 @@ import { EXPRESS_FEE, SHIPPING_OPTIONS, shippingFee, type ShippingMethod } from 
 import type { Address } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
 import { ui } from '@/lib/ui';
+import { GOVERNORATES } from '@/lib/governorates';
 
 type Props = {
   addresses: Address[];
@@ -21,12 +22,6 @@ type Props = {
   cardEnabled: boolean;
   initialCoupon?: string;
 };
-
-const GOVERNORATES = [
-  'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية', 'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ',
-  'دمياط', 'بورسعيد', 'الإسماعيلية', 'السويس', 'شمال سيناء', 'جنوب سيناء', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-  'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد', 'مطروح',
-];
 
 export default function CheckoutForm({ addresses, defaultName, defaultPhone, cardEnabled, initialCoupon }: Props) {
   const router = useRouter();

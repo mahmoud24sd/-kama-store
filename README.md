@@ -44,6 +44,17 @@ npm run build
 4. **Project Settings → API**: انسخ `Project URL` و`anon public key` إلى `.env.local`.
 5. **Authentication → URL Configuration**: ضع `Site URL` = رابط موقعك، وأضف `http://localhost:3000/**` و`https://your-domain.com/**` ضمن Redirect URLs (مطلوب لتأكيد البريد واستعادة كلمة المرور).
 6. **Authentication → Providers → Email**: قرر تفعيل «Confirm email». عند تفعيله يصل العميل بريد تأكيد (يلزم SMTP؛ خدمة Supabase المدمجة محدودة جدًا للإنتاج).
+7. شغّل `supabase/migrations/001_owner_delivery_settings.sql` ثم `supabase/migrations/002_signup_phone_governorate_social.sql` (يضيف الهاتف والمحافظة لملف المستخدم ويدعم الدخول عبر Google/Facebook).
+8. **لتسجيل بدون مشاكل:** من **Authentication → Providers → Email** أوقف «Confirm email» (أو اربط SMTP حقيقيًا مثل Resend/Brevo). خدمة البريد المدمجة في Supabase محدودة وتفشل بخطأ «تعذّر إرسال بريد التأكيد».
+
+### الدخول عبر Google و Facebook
+
+كل مزوّد يُفعَّل من **Authentication → Providers** في Supabase بعد إنشاء تطبيق لدى المزوّد، وفي الاثنين يكون **Redirect/Callback URL** هو الرابط الظاهر في صفحة المزوّد داخل Supabase (على شكل `https://<project-ref>.supabase.co/auth/v1/callback`):
+
+- **Google:** Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web). انسخ Client ID وSecret إلى Supabase.
+- **Facebook:** developers.facebook.com → Create App → Facebook Login. انسخ App ID وApp Secret إلى Supabase، وفعّل صلاحية `email`.
+
+وتأكد أن رابط موقعك (`https://kama-store.vercel.app/**`) ضمن **Authentication → URL Configuration → Redirect URLs**.
 
 ### إنشاء أول مدير (Admin)
 

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getSiteUrl } from '@/lib/site';
+import { GOVERNORATES, normalizeEgyptPhone } from '@/lib/governorates';
 
 export type FormState = { error?: string; message?: string };
 
@@ -72,7 +73,12 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   const parsed = z
     .object({
       full_name: z.string().min(2, 'أدخل اسمك الكامل').max(100),
-      email: z.string().email('بريد إلكتروني غير صالح'),
+      email: z.string().trim().email('بريد إلكتروني غير صالح'),
+      phone: z
+        .string()
+        .transform((v) => normalizeEgyptPhone(v))
+        .refine((v): v is string => v !== null, 'أدخل رقم موبايل مصري صحيح مثل 01012345678'),
+      governorate: z.enum(GOVERNORATES, { errorMap: () => ({ message: 'اختر المحافظة' }) }),
       password: passwordSchema,
       confirm: z.string(),
     })
@@ -80,6 +86,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     .safeParse({
       full_name: formData.get('full_name'),
       email: formData.get('email'),
+      phone: String(formData.get('phone') ?? ''),
+      governorate: formData.get('governorate'),
       password: formData.get('password'),
       confirm: formData.get('confirm'),
     });
@@ -92,7 +100,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
-        data: { full_name: parsed.data.full_name },
+        data: { full_name: parsed.data.full_name, phone: parsed.data.phone, governorate: parsed.data.governorate },
         emailRedirectTo: `${siteUrl()}/auth/callback`,
       },
     });

@@ -4,6 +4,8 @@ import { useActionState } from 'react';
 import Link from 'next/link';
 import { requestPasswordReset, signIn, signUp, updatePassword, type FormState } from '@/app/actions/auth';
 import { ui } from '@/lib/ui';
+import { GOVERNORATES } from '@/lib/governorates';
+import SocialButtons from './SocialButtons';
 
 const initial: FormState = {};
 
@@ -19,6 +21,8 @@ function Feedback({ state }: { state: FormState }) {
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signIn, initial);
   return (
+    <div className="space-y-4">
+    <SocialButtons next={next} />
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
       <div>
@@ -38,12 +42,15 @@ export function LoginForm({ next }: { next: string }) {
         <Link href={`/auth/register?next=${encodeURIComponent(next)}`} className="text-brand-600 hover:underline">إنشاء حساب جديد</Link>
       </div>
     </form>
+    </div>
   );
 }
 
 export function RegisterForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signUp, initial);
   return (
+    <div className="space-y-4">
+    <SocialButtons next={next} />
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
       <div>
@@ -53,6 +60,17 @@ export function RegisterForm({ next }: { next: string }) {
       <div>
         <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
         <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
+      </div>
+      <div>
+        <label htmlFor="phone" className={ui.label}>رقم الموبايل</label>
+        <input id="phone" name="phone" type="tel" required inputMode="tel" autoComplete="tel" dir="ltr" placeholder="01012345678" className={ui.input} />
+      </div>
+      <div>
+        <label htmlFor="governorate" className={ui.label}>المحافظة</label>
+        <select id="governorate" name="governorate" required defaultValue="" className={ui.input}>
+          <option value="" disabled>اختر المحافظة</option>
+          {GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
       </div>
       <div>
         <label htmlFor="password" className={ui.label}>كلمة المرور (8 أحرف على الأقل)</label>
@@ -70,6 +88,7 @@ export function RegisterForm({ next }: { next: string }) {
         لديك حساب؟ <Link href={`/auth/login?next=${encodeURIComponent(next)}`} className="text-brand-600 hover:underline">سجّل الدخول</Link>
       </p>
     </form>
+    </div>
   );
 }
 

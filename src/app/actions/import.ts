@@ -35,11 +35,17 @@ function num(v: string | undefined): number | null {
 export async function importProducts(_prev: ImportState, formData: FormData): Promise<ImportState> {
   const { supabase } = await assertAdmin();
 
+  // إما نص ملصوق من Excel / Google Sheets، أو ملف CSV
+  const pasted = String(formData.get('text') ?? '').trim();
   const file = formData.get('file');
-  if (!(file instanceof File) || file.size === 0) return { message: 'اختر ملف CSV أولًا' };
-  if (file.size > 3 * 1024 * 1024) return { message: 'الملف أكبر من 3 ميجابايت' };
+  let content = pasted;
+  if (!content) {
+    if (!(file instanceof File) || file.size === 0) return { message: 'الصق الجدول في الخانة أو اختر ملف CSV' };
+    if (file.size > 3 * 1024 * 1024) return { message: 'الملف أكبر من 3 ميجابايت' };
+    content = await file.text();
+  } else if (content.length > 3 * 1024 * 1024) return { message: 'النص أكبر من 3 ميجابايت' };
 
-  const rows = parseCsv(await file.text());
+  const rows = parseCsv(content);
   if (rows.length < 2) return { message: 'الملف فارغ أو بدون صفوف منتجات' };
   if (rows.length - 1 > MAX_ROWS) return { message: `الحد الأقصى ${MAX_ROWS} منتج في الملف الواحد. قسّم الملف.` };
 
@@ -49,7 +55,7 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     const idx = header.findIndex((h) => names.map((n) => n.toLowerCase()).includes(h));
     if (idx !== -1) col[key] = idx;
   }
-  if (col.name === undefined || col.price === undefined) return { message: 'الملف يجب أن يحتوي على عمودي name و price على الأقل. حمّل القالب من الرابط أعلاه.' };
+  if (col.name === undefined || col.price === undefined) return { message: 'الملف يجب أن يحتوي على عمودي name و price على الأقل. السطر الأول يجب أن يكون أسماء الأعمدة (انسخه مع الجدول).' };
   const get = (r: string[], k: string) => (col[k] === undefined ? undefined : (r[col[k]] ?? '').trim());
 
   const { data: cats } = await supabase.from('categories').select('id,name,slug');

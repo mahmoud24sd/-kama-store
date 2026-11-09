@@ -14,12 +14,12 @@ export default async function ImportPage() {
         <Link href="/admin/products" className="text-sm text-brand-600 hover:underline">← المنتجات</Link>
       </div>
       <ol className="list-decimal space-y-2 pe-5 text-sm leading-7">
-        <li>حمّل القالب: <a href="/admin/products/template" className="font-bold text-brand-600 underline">قالب المنتجات (CSV)</a> وافتحه في Excel أو Google Sheets.</li>
+        <li>افتح Excel أو Google Sheets، واكتب في الصف الأول أسماء الأعمدة (أو حمّل <a href="/admin/products/template" className="font-bold text-brand-600 underline">القالب الجاهز</a> وافتحه فيهم).</li>
         <li>املأ صفًّا لكل منتج. الأعمدة المطلوبة <b>name</b> و <b>price</b>، والباقي اختياري.</li>
         <li><b>category</b> اكتب اسم القسم كما هو في صفحة الأقسام (أنشئ الأقسام أولًا).</li>
         <li><b>image_urls</b> روابط الصور تبدأ بـ https وتفصل بينها بالعلامة | (حتى 6 صور). ارفع صورك على أي موقع استضافة صور أولًا وانسخ الروابط.</li>
         <li><b>publish</b> اكتب yes ليظهر المنتج في المتجر، أو اتركه فارغًا ليُحفظ كمسودة.</li>
-        <li>احفظ الملف بصيغة <b>CSV UTF-8</b> وارفعه هنا. الصفوف الخاطئة تُتجاهل ويظهر لك سبب كل واحد منها.</li>
+        <li><b>بدون ملف:</b> حدّد الجدول كله (مع صف العناوين) وانسخه، ثم الصقه في الخانة أدناه واضغط «استيراد». الصفوف الخاطئة تُتجاهل ويظهر لك سبب كل واحد منها.</li>
       </ol>
       <ImportForm />
     </div>

@@ -2,7 +2,9 @@
 export function parseCsv(input: string): string[][] {
   const text = input.replace(/^﻿/, '');
   const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
-  const delim = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ';' : ',';
+  // الفاصل: Tab (النسخ من Excel / Google Sheets) أو ; أو ,
+  const count = (c: string) => firstLine.split(c).length - 1;
+  const delim = count('\t') > 0 && count('\t') >= count(',') && count('\t') >= count(';') ? '\t' : count(';') > count(',') ? ';' : ',';
 
   const rows: string[][] = [];
   let row: string[] = [];

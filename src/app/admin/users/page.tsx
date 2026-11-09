@@ -9,8 +9,6 @@ import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'المستخدمون' };
 
-const MAIN = PERMISSIONS.filter((p) => p.key === 'users' || p.key === 'withdraw');
-const OTHER = PERMISSIONS.filter((p) => p.key !== 'users' && p.key !== 'withdraw');
 
 export default async function AdminUsers({
   searchParams,
@@ -59,25 +57,15 @@ export default async function AdminUsers({
               {p.role === 'customer' && (
                 <form action={makeAdminWithPermissions} className="space-y-2 rounded-lg bg-gray-50 p-3">
                   <input type="hidden" name="id" value={p.id} />
-                  <div className="flex flex-wrap gap-4">
-                    {MAIN.map((perm) => (
+                  <p className="text-xs font-semibold text-gray-600">اختر الصلاحيات التي تريد منحها:</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {PERMISSIONS.map((perm) => (
                       <label key={perm.key} className="flex items-center gap-2 text-sm">
                         <input type="checkbox" name="permissions" value={perm.key} />
-                        يشوف {perm.key === 'users' ? 'المستخدمين' : 'السحب والأرباح'}
+                        {perm.label}
                       </label>
                     ))}
                   </div>
-                  <details className="text-sm">
-                    <summary className="cursor-pointer text-gray-600">صلاحيات أخرى</summary>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      {OTHER.map((perm) => (
-                        <label key={perm.key} className="flex items-center gap-2">
-                          <input type="checkbox" name="permissions" value={perm.key} />
-                          {perm.label}
-                        </label>
-                      ))}
-                    </div>
-                  </details>
                   <button className={ui.btnDark}>اجعله أدمن</button>
                 </form>
               )}

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { saveContactSettings, savePublishSettings } from '@/app/actions/team';
 import { requireOwner } from '@/lib/auth';
-import { createAdminClient, hasServiceRole, serviceKeyPresent } from '@/lib/supabase/admin';
+import { createAdminClient, hasServiceRole, serviceKeyInfo, serviceKeyPresent } from '@/lib/supabase/admin';
 import { getContactSettings, getPublishSettings } from '@/lib/settings';
 import { ui } from '@/lib/ui';
 
@@ -15,14 +15,17 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
 
   // فحص المفتاح السري الذي يعتمد عليه التسجيل بدون بريد ونشر المنتجات
   let keyState: 'missing' | 'badformat' | 'rejected' | 'ok' = 'missing';
+  let keyError = '';
   if (serviceKeyPresent) {
     if (!hasServiceRole) keyState = 'badformat';
     else {
       try {
         const { error } = await createAdminClient().auth.admin.listUsers({ page: 1, perPage: 1 });
         keyState = error ? 'rejected' : 'ok';
-      } catch {
+        keyError = error ? `${error.status ?? ''} ${error.message}` : '';
+      } catch (e) {
         keyState = 'rejected';
+        keyError = e instanceof Error ? e.message : String(e);
       }
     }
   }
@@ -71,6 +74,12 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
           {keyState === 'missing' && '❌ المتغير SUPABASE_SERVICE_ROLE_KEY غير موجود في Vercel (أو لم تعمل Redeploy بعد إضافته، أو أضفته في بيئة Preview فقط بدل Production).'}
           {keyState === 'badformat' && '❌ المتغير موجود لكن قيمته تحتوي مسافات أو أسطرًا أو حروفًا غير صالحة. انسخ المفتاح من Supabase مرة أخرى بدون أي زيادات.'}
           {keyState === 'rejected' && '❌ المتغير موجود لكن Supabase يرفض المفتاح. تأكد أنه المفتاح السري (secret / service_role) وليس المفتاح العام (publishable / anon).'}
+        </p>
+      )}
+      {serviceKeyPresent && keyState !== 'ok' && (
+        <p className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700" dir="ltr">
+          نوع المفتاح الموجود: <b>{serviceKeyInfo.kind}</b> ({serviceKeyInfo.length} chars){serviceKeyInfo.kind === 'publishable' && ' ← هذا المفتاح العام وليس السري!'}
+          {keyError && <><br />Supabase: {keyError}</>}
         </p>
       )}
 

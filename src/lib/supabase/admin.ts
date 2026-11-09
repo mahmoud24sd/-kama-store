@@ -3,6 +3,17 @@ import { supabaseUrl } from './config';
 
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim().replace(/^["']|["']$/g, '');
 
+/** نوع المفتاح بدون كشفه (للتشخيص في صفحة المالك فقط) */
+export const serviceKeyInfo = {
+  kind: serviceKey.startsWith('sb_secret_')
+    ? 'secret'
+    : serviceKey.startsWith('sb_publishable_')
+      ? 'publishable'
+      : serviceKey.startsWith('eyJ')
+        ? 'jwt'
+        : 'unknown',
+  length: serviceKey.length,
+};
 export const serviceKeyPresent = serviceKey.length > 0;
 export const hasServiceRole = /^[\x21-\x7E]+$/.test(serviceKey);
 

@@ -8,6 +8,19 @@ const PROTECTED = ['/account', '/checkout', '/admin', '/sell'];
 export async function middleware(request: NextRequest) {
   if (!isSupabaseConfigured) return NextResponse.next();
 
+  const { pathname, search } = request.nextUrl;
+  const needsAuth = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+  // مسار سريع للزائر غير المسجّل: لا يوجد كوكي جلسة → لا طلبات شبكة إلى Supabase إطلاقًا
+  const hasSession = request.cookies.getAll().some((c) => c.name.startsWith('sb-') && c.name.includes('auth-token'));
+  if (!hasSession) {
+    if (!needsAuth) return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.search = `?next=${encodeURIComponent(pathname + search)}`;
+    return NextResponse.redirect(url);
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -23,13 +36,18 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // يجدد الجلسة. لا تضف كودًا بين createServerClient و getUser
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // يجدد الجلسة. لا تضف كودًا بين createServerClient و getClaims/getUser.
+  // getClaims يتحقق من التوكن محليًا (بدون رحلة شبكة) عند استخدام مفاتيح التوقيع الحديثة، وإلا نرجع لـ getUser
+  const auth = supabase.auth as unknown as { getClaims?: () => Promise<{ data: { claims?: unknown } | null }> };
+  let user: boolean;
+  if (typeof auth.getClaims === 'function') {
+    const { data } = await auth.getClaims();
+    user = Boolean(data?.claims);
+  } else {
+    const { data } = await supabase.auth.getUser();
+    user = Boolean(data.user);
+  }
 
-  const { pathname, search } = request.nextUrl;
-  const needsAuth = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (needsAuth && !user) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';

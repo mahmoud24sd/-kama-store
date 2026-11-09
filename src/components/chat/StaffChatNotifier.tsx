@@ -22,7 +22,8 @@ export default function StaffChatNotifier() {
     let alive = true;
     let timer: ReturnType<typeof setInterval> | undefined;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession(); // محلي بدون شبكة
+      const user = session?.user;
       if (!user || !alive) return;
       const { data: p } = await supabase.from('profiles').select('role,permissions').eq('id', user.id).maybeSingle();
       const ok = p?.role === 'owner' || (p?.role === 'admin' && Array.isArray(p.permissions) && p.permissions.includes('chat'));

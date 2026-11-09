@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Profile } from '@/lib/types';
@@ -6,6 +7,9 @@ import { hasPermission, isStaff, type Permission } from '@/lib/permissions';
 
 /** المستخدم الحالي — يتحقق من التوكن عبر Supabase Auth (وليس من الكوكي فقط) */
 export const getUser = cache(async () => {
+  // زائر بلا كوكي جلسة: لا داعي لأي طلب شبكة
+  const jar = await cookies();
+  if (!jar.getAll().some((c) => c.name.startsWith('sb-') && c.name.includes('auth-token'))) return null;
   const supabase = await createClient();
   const {
     data: { user },

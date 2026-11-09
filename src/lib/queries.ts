@@ -1,3 +1,6 @@
+import { unstable_cache } from 'next/cache';
+import { createClient as createPublicClient } from '@supabase/supabase-js';
+import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/server';
 import type { Category, Product, Review } from '@/lib/types';
 
@@ -6,10 +9,19 @@ const PRODUCT_SELECT =
 
 export const PAGE_SIZE = 12;
 
+// الأقسام عامة وتُطلب في كل صفحة (الهيدر): نخزنها 60 ثانية بدل استعلام في كل نقرة
+const fetchCategories = unstable_cache(
+  async (): Promise<Category[]> => {
+    const supabase = createPublicClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data } = await supabase.from('categories').select('*').order('sort_order').order('name');
+    return (data ?? []) as Category[];
+  },
+  ['categories-v1'],
+  { revalidate: 60 },
+);
+
 export async function getCategories(): Promise<Category[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.from('categories').select('*').order('sort_order').order('name');
-  return (data ?? []) as Category[];
+  return fetchCategories();
 }
 
 export async function getHomeData() {

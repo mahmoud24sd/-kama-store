@@ -48,3 +48,20 @@ export async function confirmStaleAccount(
   if (fresh) await db.from('profiles').update({ full_name: fresh.full_name, phone: fresh.phone, governorate: fresh.governorate }).eq('id', prof.id as string);
   return true;
 }
+
+/**
+ * البريد/البريدات المرتبطة برقم هاتف لتسجيل الدخول به: حسابات سُجّلت بالبريد (الرقم محفوظ في الملف الشخصي)
+ * وحسابات سُجّلت بالرقم فقط (بريد داخلي مشتق من الرقم). يعيد قائمة بالمرشحين بالترتيب.
+ */
+export async function emailsForPhone(e164: string, aliasEmail: string): Promise<string[]> {
+  const out: string[] = [];
+  if (hasServiceRole) {
+    const digits = e164.replace(/\D/g, '');
+    // الصيغة الدولية، والصيغة المحلية القديمة لأرقام مصر (01xxxxxxxxx) المحفوظة قبل دعم الدول
+    const variants = [e164, ...(digits.startsWith('20') ? [`0${digits.slice(2)}`] : [])];
+    const { data } = await createAdminClient().from('profiles').select('email').in('phone', variants).limit(5);
+    for (const r of data ?? []) if (r.email) out.push(String(r.email));
+  }
+  out.push(aliasEmail);
+  return [...new Set(out)];
+}

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { confirmStaleAccount, createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
+import { confirmStaleAccount, createAdminClient, emailsForPhone, hasServiceRole } from '@/lib/supabase/admin';
 import { getSiteUrl } from '@/lib/site';
 import { GOVERNORATES, normalizeInternationalPhone, phoneToEmail } from '@/lib/governorates';
 
@@ -56,10 +56,16 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   const byPhone = formData.get('mode') === 'phone';
   let email = String(formData.get('email') ?? '').trim();
+  let candidates: string[] | null = null;
   if (byPhone) {
     const e164 = normalizeInternationalPhone(String(formData.get('phone_country') ?? '20'), String(formData.get('phone') ?? ''));
     if (!e164) return { error: 'أدخل رقم هاتف صحيح واختر الدولة' };
     email = phoneToEmail(e164);
+    try {
+      candidates = await emailsForPhone(e164, email);
+    } catch {
+      candidates = [email];
+    }
   }
   const parsed = z
     .object({ email: z.string().email('بريد إلكتروني غير صالح'), password: z.string().min(1, 'أدخل كلمة المرور') })
@@ -68,10 +74,17 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 
   try {
     const supabase = await createClient();
-    let { error } = await supabase.auth.signInWithPassword(parsed.data);
-    // حساب قديم لم يُؤكَّد بسبب فشل البريد: نؤكده ونعيد المحاولة مرة واحدة
-    if (error?.message.toLowerCase().includes('email not confirmed') && (await confirmStaleAccount(parsed.data.email))) {
-      ({ error } = await supabase.auth.signInWithPassword(parsed.data));
+    let error: { message: string } | null = null;
+    // الدخول بالهاتف: نجرّب كل حساب مرتبط بالرقم (بريد حقيقي أو حساب هاتف فقط) حتى تنجح كلمة المرور
+    for (const candidate of candidates ?? [parsed.data.email]) {
+      const creds = { email: candidate, password: parsed.data.password };
+      ({ error } = await supabase.auth.signInWithPassword(creds));
+      // حساب قديم لم يُؤكَّد بسبب فشل البريد: نؤكده ونعيد المحاولة مرة واحدة
+      if (error?.message.toLowerCase().includes('email not confirmed') && (await confirmStaleAccount(candidate))) {
+        ({ error } = await supabase.auth.signInWithPassword(creds));
+      }
+      if (!error) break;
+      if (!error.message.toLowerCase().includes('invalid login')) break;
     }
     if (error) {
       const wrong = error.message.toLowerCase().includes('invalid login');

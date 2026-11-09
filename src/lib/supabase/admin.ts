@@ -3,6 +3,7 @@ import { supabaseUrl } from './config';
 
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim().replace(/^["']|["']$/g, '');
 
+export const serviceKeyPresent = serviceKey.length > 0;
 export const hasServiceRole = /^[\x21-\x7E]+$/.test(serviceKey);
 
 /**

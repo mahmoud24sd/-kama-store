@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { saveContactSettings, savePublishSettings } from '@/app/actions/team';
 import { requireOwner } from '@/lib/auth';
+import { createAdminClient, hasServiceRole, serviceKeyPresent } from '@/lib/supabase/admin';
 import { getContactSettings, getPublishSettings } from '@/lib/settings';
 import { ui } from '@/lib/ui';
 
@@ -11,6 +12,20 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const c = await getContactSettings();
   const pub = await getPublishSettings();
+
+  // فحص المفتاح السري الذي يعتمد عليه التسجيل بدون بريد ونشر المنتجات
+  let keyState: 'missing' | 'badformat' | 'rejected' | 'ok' = 'missing';
+  if (serviceKeyPresent) {
+    if (!hasServiceRole) keyState = 'badformat';
+    else {
+      try {
+        const { error } = await createAdminClient().auth.admin.listUsers({ page: 1, perPage: 1 });
+        keyState = error ? 'rejected' : 'ok';
+      } catch {
+        keyState = 'rejected';
+      }
+    }
+  }
 
   return (
     <div className="max-w-xl space-y-4">
@@ -46,6 +61,18 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
         </div>
         <button className={ui.btnDark}>حفظ</button>
       </form>
+
+      <hr className="my-6" />
+      <h2 className="text-lg font-extrabold">حالة المفتاح السري (التسجيل بدون بريد)</h2>
+      {keyState === 'ok' ? (
+        <p className={ui.alertOk}>✅ المفتاح شغّال. التسجيل لا يعتمد على بريد التأكيد.</p>
+      ) : (
+        <p className={ui.alertError}>
+          {keyState === 'missing' && '❌ المتغير SUPABASE_SERVICE_ROLE_KEY غير موجود في Vercel (أو لم تعمل Redeploy بعد إضافته، أو أضفته في بيئة Preview فقط بدل Production).'}
+          {keyState === 'badformat' && '❌ المتغير موجود لكن قيمته تحتوي مسافات أو أسطرًا أو حروفًا غير صالحة. انسخ المفتاح من Supabase مرة أخرى بدون أي زيادات.'}
+          {keyState === 'rejected' && '❌ المتغير موجود لكن Supabase يرفض المفتاح. تأكد أنه المفتاح السري (secret / service_role) وليس المفتاح العام (publishable / anon).'}
+        </p>
+      )}
 
       <hr className="my-6" />
       <h2 className="text-lg font-extrabold">نشر منتجات الغير (InstaPay / محفظة)</h2>

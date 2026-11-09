@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { requestPasswordReset, signIn, signUp, updatePassword, type FormState } from '@/app/actions/auth';
 import { ui } from '@/lib/ui';
 import { GOVERNORATES } from '@/lib/governorates';
+import PasswordInput from './PasswordInput';
 import { COUNTRIES } from '@/lib/countries';
 
 const initial: FormState = {};
@@ -30,7 +31,7 @@ export function LoginForm({ next }: { next: string }) {
       </div>
       <div>
         <label htmlFor="password" className={ui.label}>كلمة المرور</label>
-        <input id="password" name="password" type="password" required autoComplete="current-password" dir="ltr" className={ui.input} />
+        <PasswordInput id="password" name="password" autoComplete="current-password" />
       </div>
       <Feedback state={state} />
       <button type="submit" disabled={pending} className={`${ui.btnPrimary} w-full py-2.5`}>
@@ -79,11 +80,11 @@ export function RegisterForm({ next }: { next: string }) {
       </div>
       <div>
         <label htmlFor="password" className={ui.label}>كلمة المرور (8 أحرف على الأقل)</label>
-        <input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" dir="ltr" className={ui.input} />
+        <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} />
       </div>
       <div>
         <label htmlFor="confirm" className={ui.label}>تأكيد كلمة المرور</label>
-        <input id="confirm" name="confirm" type="password" required minLength={8} autoComplete="new-password" dir="ltr" className={ui.input} />
+        <PasswordInput id="confirm" name="confirm" autoComplete="new-password" minLength={8} />
       </div>
       <Feedback state={state} />
       <button type="submit" disabled={pending} className={`${ui.btnPrimary} w-full py-2.5`}>
@@ -122,11 +123,11 @@ export function ResetForm() {
     <form action={action} className="space-y-4">
       <div>
         <label htmlFor="password" className={ui.label}>كلمة المرور الجديدة</label>
-        <input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" dir="ltr" className={ui.input} />
+        <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} />
       </div>
       <div>
         <label htmlFor="confirm" className={ui.label}>تأكيد كلمة المرور</label>
-        <input id="confirm" name="confirm" type="password" required minLength={8} autoComplete="new-password" dir="ltr" className={ui.input} />
+        <PasswordInput id="confirm" name="confirm" autoComplete="new-password" minLength={8} />
       </div>
       <Feedback state={state} />
       <button type="submit" disabled={pending} className={`${ui.btnPrimary} w-full py-2.5`}>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Heart, Menu, Search, User } from 'lucide-react';
 import Logo from './Logo';
+import AccountMenu from './AccountMenu';
 import CartLink from '@/components/cart/CartLink';
 import { getProfile, getUser } from '@/lib/auth';
 import { getCategories } from '@/lib/queries';
@@ -49,11 +50,14 @@ export default async function Header() {
 
           <div className="ms-auto flex items-center gap-1 md:ms-0">
             {/* الحساب */}
-            <details className="relative">
-              <summary className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-white/10">
+            <AccountMenu
+              summary={
+                <>
                 <User className="h-6 w-6" />
                 <span className="hidden text-sm font-semibold lg:inline">{user ? `أهلًا ${firstName || ''}` : t('account')}</span>
-              </summary>
+              </>
+              }
+            >
               <div className="absolute end-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white py-2 text-sm text-gray-800 shadow-xl">
                 {user ? (
                   <>
@@ -92,7 +96,7 @@ export default async function Header() {
                   </>
                 )}
               </div>
-            </details>
+            </AccountMenu>
 
             <Link href="/account/favorites" className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-white/10" aria-label={t('favorites')}>
               <Heart className="h-6 w-6" />

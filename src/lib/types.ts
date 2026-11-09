@@ -27,6 +27,9 @@ export type Product = {
   slug: string;
   description: string | null;
   brand: string | null;
+  shop_name?: string | null;
+  seller_id?: string | null;
+  status?: 'draft' | 'pending' | 'published' | 'rejected';
   price: number;
   compare_at_price: number | null;
   stock: number;

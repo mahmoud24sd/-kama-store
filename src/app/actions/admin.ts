@@ -22,6 +22,7 @@ const productSchema = z.object({
   slug: z.string().trim().max(200).optional(),
   description: z.string().trim().max(5000).optional(),
   brand: z.string().trim().max(100).optional(),
+  shop_name: z.string().trim().max(100).optional(),
   category_id: z.string().uuid().or(z.literal('')).optional(),
   price: z.coerce.number().min(0, 'السعر غير صالح').max(10_000_000),
   stock: z.coerce.number().int('المخزون يجب أن يكون رقمًا صحيحًا').min(0, 'المخزون لا يمكن أن يكون سالبًا').max(1_000_000),
@@ -63,6 +64,7 @@ export async function saveProduct(formData: FormData) {
     slug: formData.get('slug') ?? '',
     description: formData.get('description') ?? '',
     brand: formData.get('brand') ?? '',
+    shop_name: formData.get('shop_name') ?? '',
     category_id: formData.get('category_id') ?? '',
     price: formData.get('price'),
     stock: formData.get('stock') ?? 0,
@@ -80,6 +82,15 @@ export async function saveProduct(formData: FormData) {
   const { variants, error: variantsError } = parseVariants(String(formData.get('variants') ?? ''));
   if (variantsError) fail(back, variantsError);
 
+  // حفظ التغييرات = يحتفظ بحالة الظهور الحالية (المنتج الجديد مسودة). نشر المنتج = يظهر في المتجر. إخفاء = يختفي.
+  const intent = String(formData.get('intent') ?? 'save');
+  let existingRow: Record<string, unknown> | null = null;
+  if (id) {
+    const { data: cur } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
+    existingRow = cur as Record<string, unknown> | null;
+  }
+  const isActive = intent === 'publish' ? true : intent === 'unpublish' ? false : Boolean(existingRow?.is_active);
+
   const row = {
     name: d.name,
     slug: d.slug ? slugify(d.slug) : slugify(d.name) || `p-${Date.now().toString(36)}`,
@@ -89,7 +100,9 @@ export async function saveProduct(formData: FormData) {
     price: d.price,
     compare_at_price: compareAt,
     stock: d.stock,
-    is_active: checkbox(formData.get('is_active')),
+    is_active: isActive,
+    ...(d.shop_name ? { shop_name: d.shop_name } : {}),
+    ...(existingRow && 'status' in existingRow && intent !== 'save' ? { status: isActive ? 'published' : 'draft' } : {}),
     is_deal: checkbox(formData.get('is_deal')),
     deal_ends_at: dealEnds ? dealEnds.toISOString() : null,
   };
@@ -144,7 +157,7 @@ export async function saveProduct(formData: FormData) {
   }
 
   revalidatePath('/', 'layout');
-  redirect(`/admin/products/${productId}?saved=1`);
+  redirect(`/admin/products/${productId}?saved=${intent === 'publish' ? 'published' : intent === 'unpublish' ? 'hidden' : '1'}`);
 }
 
 export async function deleteProduct(formData: FormData) {

@@ -30,7 +30,7 @@ export default async function EditProduct({
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-extrabold">تعديل المنتج</h1>
-      {sp.saved && <p className={ui.alertOk}>تم الحفظ.</p>}
+      {sp.saved && <p className={ui.alertOk}>{sp.saved === 'published' ? 'تم نشر المنتج في المتجر.' : sp.saved === 'hidden' ? 'تم إخفاء المنتج من المتجر.' : 'تم حفظ التغييرات.'}</p>}
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
       <ProductForm product={data as unknown as Product} categories={categories} />
     </div>

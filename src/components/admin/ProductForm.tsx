@@ -35,6 +35,10 @@ export default function ProductForm({ product, categories }: { product?: Product
           <input id="brand" name="brand" defaultValue={product?.brand ?? ''} className={ui.input} />
         </div>
         <div>
+          <label className={ui.label} htmlFor="shop_name">اسم المحل</label>
+          <input id="shop_name" name="shop_name" defaultValue={product?.shop_name ?? ''} className={ui.input} />
+        </div>
+        <div>
           <label className={ui.label} htmlFor="category_id">القسم</label>
           <select id="category_id" name="category_id" defaultValue={product?.category_id ?? ''} className={ui.input}>
             <option value="">— بدون قسم —</option>
@@ -60,7 +64,9 @@ export default function ProductForm({ product, categories }: { product?: Product
       </div>
 
       <div className="flex flex-wrap items-center gap-6 rounded-lg bg-gray-50 p-3 text-sm">
-        <label className="flex items-center gap-2"><input type="checkbox" name="is_active" defaultChecked={product?.is_active ?? true} /> ظاهر في المتجر</label>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${product?.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
+          {product?.is_active ? 'منشور في المتجر' : 'مسودة (غير ظاهر للعملاء)'}
+        </span>
         <label className="flex items-center gap-2"><input type="checkbox" name="is_deal" defaultChecked={product?.is_deal ?? false} /> ضمن عروض اليوم</label>
         <label className="flex items-center gap-2">ينتهي العرض في
           <input type="datetime-local" name="deal_ends_at" defaultValue={toLocalInput(product?.deal_ends_at ?? null)} className={`${ui.input} !w-auto`} />
@@ -99,7 +105,11 @@ export default function ProductForm({ product, categories }: { product?: Product
         <p className="mt-1 text-xs text-gray-500">حتى 5 ميجابايت للصورة. الصورة الأولى هي الرئيسية.</p>
       </div>
 
-      <button type="submit" className={`${ui.btnPrimary} px-8 py-2.5`}>{product ? 'حفظ التعديلات' : 'إضافة المنتج'}</button>
+      <div className="flex flex-wrap gap-3">
+        <button type="submit" name="intent" value="save" className={`${ui.btnOutline} px-6 py-2.5`}>حفظ التغييرات</button>
+        <button type="submit" name="intent" value="publish" className={`${ui.btnPrimary} px-8 py-2.5`}>{product?.is_active ? 'حفظ ونشر' : 'نشر المنتج'}</button>
+        {product?.is_active && <button type="submit" name="intent" value="unpublish" className={`${ui.btnDanger} px-6 py-2.5`}>إخفاء من المتجر</button>}
+      </div>
     </form>
   );
 }

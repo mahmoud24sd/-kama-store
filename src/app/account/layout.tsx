@@ -6,6 +6,7 @@ const LINKS = [
   { href: '/account/orders', label: 'طلباتي' },
   { href: '/account/addresses', label: 'عناوين الشحن' },
   { href: '/account/favorites', label: 'المفضلة' },
+  { href: '/sell', label: 'انشر منتجك' },
 ];
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {

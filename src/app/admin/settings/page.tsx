@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { saveContactSettings } from '@/app/actions/team';
+import { saveContactSettings, savePublishSettings } from '@/app/actions/team';
 import { requireOwner } from '@/lib/auth';
-import { getContactSettings } from '@/lib/settings';
+import { getContactSettings, getPublishSettings } from '@/lib/settings';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'إعدادات التواصل' };
@@ -10,6 +10,7 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
   await requireOwner();
   const sp = await searchParams;
   const c = await getContactSettings();
+  const pub = await getPublishSettings();
 
   return (
     <div className="max-w-xl space-y-4">
@@ -44,6 +45,21 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
           <input id="tiktok" name="tiktok" defaultValue={c.tiktok} dir="ltr" placeholder="https://tiktok.com/@..." className={ui.input} />
         </div>
         <button className={ui.btnDark}>حفظ</button>
+      </form>
+
+      <hr className="my-6" />
+      <h2 className="text-lg font-extrabold">نشر منتجات الغير (InstaPay)</h2>
+      <p className="text-sm text-gray-600">من يريد نشر منتج عندنا يحوّل الرسم إلى هذا الحساب ثم يرسل رقم العملية، وتؤكده أنت (أو أدمن لديه صلاحية «تأكيد دفع نشر المنتجات») من صفحة «طلبات النشر».</p>
+      <form action={savePublishSettings} className="space-y-3">
+        <div>
+          <label className={ui.label} htmlFor="instapay">حساب InstaPay (عنوان الدفع أو رقم الهاتف)</label>
+          <input id="instapay" name="instapay" defaultValue={pub.instapay} dir="ltr" placeholder="name@instapay أو 01012345678" className={ui.input} />
+        </div>
+        <div>
+          <label className={ui.label} htmlFor="fee">رسم نشر المنتج (ج.م)</label>
+          <input id="fee" name="fee" type="number" min={0} step="1" defaultValue={pub.fee} className={ui.input} />
+        </div>
+        <button className={ui.btnDark}>حفظ إعدادات النشر</button>
       </form>
     </div>
   );

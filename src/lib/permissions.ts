@@ -10,6 +10,7 @@ export const PERMISSIONS = [
   { key: 'chat', label: 'الدردشة (قريبًا)' },
   { key: 'temp_password', label: 'باسورد مؤقت' },
   { key: 'delete_user', label: 'حذف المستخدم' },
+  { key: 'publishing', label: 'تأكيد دفع نشر المنتجات (10 ج)' },
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number]['key'];

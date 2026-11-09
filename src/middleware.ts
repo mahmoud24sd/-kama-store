@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from '@/lib/supabase/config';
 
 // مسارات تتطلب تسجيل دخول (صفحة الأدمن تتحقق من الصلاحية أيضًا على السيرفر + RLS)
-const PROTECTED = ['/account', '/checkout', '/admin'];
+const PROTECTED = ['/account', '/checkout', '/admin', '/sell'];
 
 export async function middleware(request: NextRequest) {
   if (!isSupabaseConfigured) return NextResponse.next();

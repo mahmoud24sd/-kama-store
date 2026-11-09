@@ -55,6 +55,7 @@ export default async function ProductPage({ params }: Props) {
         <ProductGallery images={images} name={product.name} />
 
         <div className="space-y-4">
+          {product.shop_name && <p className="text-sm text-gray-600" dir="auto">المحل: <b>{product.shop_name}</b></p>}
           {product.brand && (
             <Link href={`/products?brand=${encodeURIComponent(product.brand)}`} className="text-sm font-semibold text-brand-600 hover:underline" dir="auto">
               {product.brand}

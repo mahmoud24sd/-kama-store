@@ -115,6 +115,29 @@ export async function saveContactSettings(formData: FormData) {
   redirect('/admin/settings?saved=1');
 }
 
+export async function savePublishSettings(formData: FormData) {
+  const { supabase } = await assertOwner();
+  const parsed = z
+    .object({
+      instapay: z.string().trim().max(100),
+      fee: z.coerce.number().min(0, 'الرسم غير صالح').max(100000),
+    })
+    .safeParse({ instapay: formData.get('instapay') ?? '', fee: formData.get('fee') });
+  if (!parsed.success) fail('/admin/settings', parsed.error.issues[0].message);
+
+  const { error } = await supabase.from('app_settings').upsert(
+    [
+      { key: 'instapay_handle', value: parsed.data!.instapay },
+      { key: 'publish_fee', value: String(parsed.data!.fee) },
+    ],
+    { onConflict: 'key' },
+  );
+  if (error) fail('/admin/settings', 'تعذّر الحفظ. تأكد من تشغيل ملف supabase/migrations/003 في Supabase');
+
+  revalidatePath('/', 'layout');
+  redirect('/admin/settings?saved=1');
+}
+
 /* ───────────────────────── باسورد مؤقت وحذف المستخدم ───────────────────────── */
 
 export type TempPasswordState = { password?: string; error?: string };

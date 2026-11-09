@@ -17,7 +17,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
     .from('products')
     .select('*, product_images(id,url,sort_order), categories(name,slug), product_variants(id,product_id,color,size,price_override,stock,sku)')
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(1000);
   const term = sp.q?.replace(/[,()%_\\*]/g, ' ').trim();
   if (term) query = query.ilike('name', `%${term}%`);
   const { data } = await query;
@@ -27,7 +27,10 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-extrabold">المنتجات ({products.length})</h1>
-        <Link href="/admin/products/new" className={ui.btnPrimary}><Plus className="h-4 w-4" /> منتج جديد</Link>
+        <div className="flex gap-2">
+          <Link href="/admin/products/import" className={ui.btnOutline}>استيراد بالجملة</Link>
+          <Link href="/admin/products/new" className={ui.btnPrimary}><Plus className="h-4 w-4" /> منتج جديد</Link>
+        </div>
       </div>
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
 

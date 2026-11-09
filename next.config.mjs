@@ -5,7 +5,8 @@ const nextConfig = {
     serverActions: { bodySizeLimit: '12mb' },
   },
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: '**.supabase.co' }],
+    // https من أي موقع: لأن الاستيراد بالجملة يستخدم روابط صور خارجية
+    remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
   eslint: { ignoreDuringBuilds: true },
 };

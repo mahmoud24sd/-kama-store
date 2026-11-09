@@ -100,8 +100,17 @@ export default function ChatWidget() {
       }
       setConvId(id);
       setMode('human');
-    } catch {
-      setError('تعذّر بدء المحادثة الآن. حاول مرة أخرى بعد قليل.');
+    } catch (e) {
+      const err = e as { code?: string; message?: string } | null;
+      const text = `${err?.code ?? ''} ${err?.message ?? ''}`;
+      // 42P01 / PGRST205 = الجدول غير موجود → لم يُشغَّل ملف 004 في Supabase
+      if (/42P01|PGRST205|chat_conversations|chat_messages/.test(text) && /does not exist|schema cache|42P01|PGRST205|Could not find/.test(text)) {
+        setError('الدردشة غير مفعّلة بعد على الموقع (لم يتم تشغيل ملف قاعدة البيانات الخاص بها). تواصل معنا بطريقة أخرى مؤقتًا.');
+      } else if (/42501|row-level security/.test(text)) {
+        setError('لا توجد صلاحية لبدء المحادثة. سجّل خروج ثم دخول وحاول مرة أخرى.');
+      } else {
+        setError(`تعذّر بدء المحادثة الآن${err?.code ? ` (${err.code})` : ''}. حاول مرة أخرى بعد قليل.`);
+      }
     } finally {
       setBusy(false);
     }

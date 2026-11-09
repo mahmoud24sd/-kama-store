@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { getSiteUrl } from '@/lib/site';
 import { GOVERNORATES, normalizeEgyptPhone } from '@/lib/governorates';
 
@@ -26,7 +27,7 @@ const GENERIC_ERROR = 'تعذّر إكمال الطلب الآن. يرجى ال�
 function friendlyAuthError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('invalid login')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
-  if (m.includes('already registered') || m.includes('already been registered')) return 'هذا البريد مسجل بالفعل';
+  if (m.includes('already registered') || m.includes('already been registered') || m.includes('already exists')) return 'هذا البريد مسجل بالفعل';
   if (m.includes('email not confirmed')) return 'يرجى تأكيد بريدك الإلكتروني أولًا من الرسالة المرسلة إليك';
   if (m.includes('rate limit') || m.includes('too many')) return 'محاولات كثيرة، حاول مرة أخرى بعد قليل';
   if (m.includes('invalid api key') || m.includes('apikey')) {
@@ -94,18 +95,35 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   let hasSession = false;
+  const meta = { full_name: parsed.data.full_name, phone: parsed.data.phone, governorate: parsed.data.governorate };
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      options: {
-        data: { full_name: parsed.data.full_name, phone: parsed.data.phone, governorate: parsed.data.governorate },
-        emailRedirectTo: `${siteUrl()}/auth/callback`,
-      },
-    });
-    if (error) return { error: friendlyAuthError(error.message) };
-    hasSession = Boolean(data.session);
+
+    if (hasServiceRole) {
+      // إنشاء الحساب مؤكَّدًا من السيرفر (لا يحتاج إرسال بريد) ثم تسجيل الدخول مباشرة
+      const admin = createAdminClient();
+      const { error: createError } = await admin.auth.admin.createUser({
+        email: parsed.data.email,
+        password: parsed.data.password,
+        email_confirm: true,
+        user_metadata: meta,
+      });
+      if (createError) return { error: friendlyAuthError(createError.message) };
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      });
+      if (signInError) return { message: 'تم إنشاء الحساب بنجاح. سجّل الدخول الآن.' };
+      hasSession = true;
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email: parsed.data.email,
+        password: parsed.data.password,
+        options: { data: meta, emailRedirectTo: `${siteUrl()}/auth/callback` },
+      });
+      if (error) return { error: friendlyAuthError(error.message) };
+      hasSession = Boolean(data.session);
+    }
   } catch (e) {
     return { error: friendlyAuthError(errMsg(e)) };
   }

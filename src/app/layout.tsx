@@ -3,6 +3,7 @@ import { Cairo } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import ChatWidget from '@/components/chat/ChatWidget';
 import { CartProvider } from '@/components/cart/CartProvider';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { getSiteUrl } from '@/lib/site';
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Header />
             <main className="mx-auto min-h-[60vh] max-w-7xl px-3 py-4">{children}</main>
             <Footer />
+            <ChatWidget />
           </CartProvider>
         ) : (
           <SetupNotice />

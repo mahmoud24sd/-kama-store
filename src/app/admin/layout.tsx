@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BarChart3, Boxes, Layers, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
+import { BarChart3, Boxes, Layers, MessageCircle, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
 import { requireAdmin } from '@/lib/auth';
+import ChatAlert from '@/components/chat/ChatAlert';
 import { hasPermission, type Permission } from '@/lib/permissions';
 
 export const metadata: Metadata = { title: { default: 'لوحة التحكم', template: '%s | إدارة Kama Store' } };
@@ -18,6 +19,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/coupons', label: 'الكوبونات', icon: Tag, perm: 'coupons' },
   { href: '/admin/customers', label: 'العملاء', icon: Users, perm: 'users' },
   { href: '/admin/publishing', label: 'طلبات النشر', icon: Upload, perm: 'publishing' },
+  { href: '/admin/chat', label: 'الدردشة', icon: MessageCircle, perm: 'chat' },
   { href: '/admin/reviews', label: 'التقييمات', icon: Star },
   { href: '/admin/earnings', label: 'الأرباح والسحب', icon: Wallet, perm: 'withdraw' },
   { href: '/admin/users', label: 'المستخدمون', icon: UserCog, owner: true },
@@ -39,7 +41,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </Link>
         ))}
       </nav>
-      <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">{children}</div>
+      <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
+        {hasPermission(profile, 'chat') && <ChatAlert />}
+        {children}
+      </div>
     </div>
   );
 }

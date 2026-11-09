@@ -46,7 +46,8 @@ npm run build
 6. **Authentication → Providers → Email**: قرر تفعيل «Confirm email». عند تفعيله يصل العميل بريد تأكيد (يلزم SMTP؛ خدمة Supabase المدمجة محدودة جدًا للإنتاج).
 7. شغّل `supabase/migrations/001_owner_delivery_settings.sql` ثم `supabase/migrations/002_signup_phone_governorate_social.sql` (يضيف الهاتف والمحافظة لملف المستخدم ويدعم الدخول عبر Google/Facebook).
 8. شغّل `supabase/migrations/003_seller_publishing.sql` (نشر المنتجات برسم InstaPay + اسم المحل). ثم من لوحة المالك ← «إعدادات التواصل» اكتب حساب InstaPay والرسم.
-9. **لتسجيل بدون مشاكل:** من **Authentication → Providers → Email** أوقف «Confirm email» (أو اربط SMTP حقيقيًا مثل Resend/Brevo). خدمة البريد المدمجة في Supabase محدودة وتفشل بخطأ «تعذّر إرسال بريد التأكيد».
+9. شغّل `supabase/migrations/004_chat.sql` (الدردشة).
+10. **لتسجيل بدون مشاكل:** من **Authentication → Providers → Email** أوقف «Confirm email» (أو اربط SMTP حقيقيًا مثل Resend/Brevo). خدمة البريد المدمجة في Supabase محدودة وتفشل بخطأ «تعذّر إرسال بريد التأكيد».
 
 ### الدخول عبر Google و Facebook
 

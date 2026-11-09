@@ -7,7 +7,7 @@ export const PERMISSIONS = [
   { key: 'withdraw', label: 'الأرباح والسحب' },
   { key: 'users', label: 'المستخدمون (العملاء)' },
   { key: 'coupons', label: 'أكواد الخصم' },
-  { key: 'chat', label: 'الدردشة (قريبًا)' },
+  { key: 'chat', label: 'الدردشة (الرد على العملاء)' },
   { key: 'temp_password', label: 'باسورد مؤقت' },
   { key: 'delete_user', label: 'حذف المستخدم' },
   { key: 'publishing', label: 'تأكيد دفع نشر المنتجات (10 ج)' },

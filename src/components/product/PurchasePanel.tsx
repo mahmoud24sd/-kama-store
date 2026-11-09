@@ -145,7 +145,7 @@ export default function PurchasePanel({ productId, basePrice, baseStock, variant
         <button
           type="button"
           disabled={!needsSelection && stock < 1}
-          onClick={() => { if (addToCart()) router.push('/cart'); }}
+          onClick={() => { if (addToCart()) router.push('/checkout'); }}
           className={`${ui.btnDark} flex-1 py-3`}
         >
           اشترِ الآن

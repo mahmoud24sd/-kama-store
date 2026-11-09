@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { requestPasswordReset, signIn, signUp, updatePassword, type FormState } from '@/app/actions/auth';
 import { ui } from '@/lib/ui';
@@ -9,6 +9,36 @@ import PasswordInput from './PasswordInput';
 import { COUNTRIES } from '@/lib/countries';
 
 const initial: FormState = {};
+
+function ModeTabs({ mode, setMode }: { mode: 'email' | 'phone'; setMode: (m: 'email' | 'phone') => void }) {
+  const tab = (m: 'email' | 'phone', label: string) => (
+    <button
+      type="button"
+      onClick={() => setMode(m)}
+      aria-pressed={mode === m}
+      className={`flex-1 rounded-md py-1.5 text-sm font-semibold ${mode === m ? 'bg-white shadow text-brand-800' : 'text-gray-600'}`}
+    >
+      {label}
+    </button>
+  );
+  return <div className="flex gap-1 rounded-lg bg-gray-100 p-1">{tab('email', 'بالبريد الإلكتروني')}{tab('phone', 'برقم الهاتف')}</div>;
+}
+
+function PhoneField({ id, label }: { id: string; label: string }) {
+  return (
+    <div>
+      <label htmlFor={id} className={ui.label}>{label}</label>
+      <div className="flex gap-2" dir="ltr">
+        <select name="phone_country" aria-label="الدولة" defaultValue="20" className={`${ui.input} !w-40 shrink-0`}>
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.dial}>{c.name} (+{c.dial})</option>
+          ))}
+        </select>
+        <input id={id} name="phone" type="tel" required inputMode="tel" autoComplete="tel-national" placeholder="1012345678" className={ui.input} />
+      </div>
+    </div>
+  );
+}
 
 function Feedback({ state }: { state: FormState }) {
   return (
@@ -21,18 +51,26 @@ function Feedback({ state }: { state: FormState }) {
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signIn, initial);
+  const [mode, setMode] = useState<'email' | 'phone'>('email');
   return (
     <div className="space-y-4">
-    <form action={action} className="space-y-4">
+    <ModeTabs mode={mode} setMode={setMode} />
+    <form action={action} className="space-y-4" key={mode}>
       <input type="hidden" name="next" value={next} />
-      <div>
-        <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
-        <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
-      </div>
+      <input type="hidden" name="mode" value={mode} />
+      {mode === 'email' ? (
+        <div>
+          <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
+          <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
+        </div>
+      ) : (
+        <PhoneField id="login_phone" label="رقم الهاتف" />
+      )}
       <div>
         <label htmlFor="password" className={ui.label}>كلمة المرور</label>
         <PasswordInput id="password" name="password" autoComplete="current-password" />
       </div>
+      {mode === 'phone' && <p className="text-xs text-gray-500">لو نسيت كلمة مرور حساب مسجّل برقم الهاتف، تواصل معنا لإعادة تعيينها.</p>}
       <Feedback state={state} />
       <button type="submit" disabled={pending} className={`${ui.btnPrimary} w-full py-2.5`}>
         {pending ? 'جارٍ الدخول...' : 'تسجيل الدخول'}
@@ -48,29 +86,24 @@ export function LoginForm({ next }: { next: string }) {
 
 export function RegisterForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signUp, initial);
+  const [mode, setMode] = useState<'email' | 'phone'>('email');
   return (
     <div className="space-y-4">
+    <ModeTabs mode={mode} setMode={setMode} />
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
+      <input type="hidden" name="mode" value={mode} />
       <div>
         <label htmlFor="full_name" className={ui.label}>الاسم الكامل</label>
         <input id="full_name" name="full_name" required minLength={2} autoComplete="name" className={ui.input} />
       </div>
-      <div>
-        <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
-        <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
-      </div>
-      <div>
-        <label htmlFor="phone" className={ui.label}>رقم الموبايل</label>
-        <div className="flex gap-2" dir="ltr">
-          <select name="phone_country" aria-label="الدولة" defaultValue="20" className={`${ui.input} !w-40 shrink-0`}>
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.dial}>{c.name} (+{c.dial})</option>
-            ))}
-          </select>
-          <input id="phone" name="phone" type="tel" required inputMode="tel" autoComplete="tel-national" placeholder="1012345678" className={ui.input} />
+      {mode === 'email' && (
+        <div>
+          <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
+          <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
         </div>
-      </div>
+      )}
+      <PhoneField id="phone" label="رقم الموبايل" />
       <div>
         <label htmlFor="governorate" className={ui.label}>المحافظة</label>
         <select id="governorate" name="governorate" required defaultValue="" className={ui.input}>

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { confirmStaleAccount, createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { getSiteUrl } from '@/lib/site';
-import { GOVERNORATES, normalizeInternationalPhone } from '@/lib/governorates';
+import { GOVERNORATES, normalizeInternationalPhone, phoneToEmail } from '@/lib/governorates';
 
 export type FormState = { error?: string; message?: string };
 
@@ -54,9 +54,16 @@ function friendlyAuthError(message: string): string {
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
+  const byPhone = formData.get('mode') === 'phone';
+  let email = String(formData.get('email') ?? '').trim();
+  if (byPhone) {
+    const e164 = normalizeInternationalPhone(String(formData.get('phone_country') ?? '20'), String(formData.get('phone') ?? ''));
+    if (!e164) return { error: 'أدخل رقم هاتف صحيح واختر الدولة' };
+    email = phoneToEmail(e164);
+  }
   const parsed = z
     .object({ email: z.string().email('بريد إلكتروني غير صالح'), password: z.string().min(1, 'أدخل كلمة المرور') })
-    .safeParse({ email: formData.get('email'), password: formData.get('password') });
+    .safeParse({ email, password: formData.get('password') });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
@@ -66,7 +73,10 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     if (error?.message.toLowerCase().includes('email not confirmed') && (await confirmStaleAccount(parsed.data.email))) {
       ({ error } = await supabase.auth.signInWithPassword(parsed.data));
     }
-    if (error) return { error: friendlyAuthError(error.message) };
+    if (error) {
+      const wrong = error.message.toLowerCase().includes('invalid login');
+      return { error: byPhone && wrong ? 'رقم الهاتف أو كلمة المرور غير صحيحة' : friendlyAuthError(error.message) };
+    }
   } catch (e) {
     return { error: friendlyAuthError(errMsg(e)) };
   }
@@ -75,6 +85,10 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 }
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
+  const byPhone = formData.get('mode') === 'phone';
+  const phoneE164 = normalizeInternationalPhone(String(formData.get('phone_country') ?? '20'), String(formData.get('phone') ?? '')) ?? '';
+  // التسجيل برقم الهاتف لا يرسل بريدًا أبدًا، فيحتاج المفتاح السري للسيرفر
+  if (byPhone && !hasServiceRole) return { error: 'التسجيل برقم الهاتف غير متاح حاليًا. سجّل بالبريد الإلكتروني.' };
   const parsed = z
     .object({
       full_name: z.string().min(2, 'أدخل اسمك الكامل').max(100),
@@ -87,8 +101,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     .refine((d) => d.password === d.confirm, { message: 'كلمتا المرور غير متطابقتين', path: ['confirm'] })
     .safeParse({
       full_name: formData.get('full_name'),
-      email: formData.get('email'),
-      phone: normalizeInternationalPhone(String(formData.get('phone_country') ?? '20'), String(formData.get('phone') ?? '')) ?? '',
+      email: byPhone ? phoneToEmail(phoneE164) : formData.get('email'),
+      phone: phoneE164,
       governorate: formData.get('governorate'),
       password: formData.get('password'),
       confirm: formData.get('confirm'),
@@ -113,7 +127,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
         const exists = /already|exists|registered/i.test(createError.message);
         // بريد سُجّل في محاولة سابقة فشلت ولم يُؤكَّد: نكمل التسجيل عليه بدل رسالة «مسجل بالفعل»
         const fixed = exists && (await confirmStaleAccount(parsed.data.email, { password: parsed.data.password, ...meta }));
-        if (!fixed) return { error: friendlyAuthError(createError.message) };
+        if (!fixed && byPhone && !exists) return { error: 'تعذّر التسجيل برقم الهاتف حاليًا. سجّل بالبريد الإلكتروني أو تواصل معنا.' };
+        if (!fixed) return { error: byPhone && exists ? 'هذا الرقم مسجل بالفعل. سجّل الدخول.' : friendlyAuthError(createError.message) };
       }
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: parsed.data.email,

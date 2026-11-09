@@ -23,3 +23,7 @@ export function normalizeInternationalPhone(dial: string, raw: string): string |
   if (d === '20') return /^1[0125]\d{8}$/.test(national) ? `+20${national}` : null;
   return /^\d{6,12}$/.test(national) ? `+${d}${national}` : null;
 }
+
+/** حسابات التسجيل برقم الهاتف تُخزَّن ببريد داخلي مشتق من الرقم (لا يُرسَل إليه شيء ولا يظهر للمستخدم) */
+export const PHONE_EMAIL_DOMAIN = 'phone.invalid';
+export const phoneToEmail = (e164: string) => `${e164.replace(/\D/g, '')}@${PHONE_EMAIL_DOMAIN}`;

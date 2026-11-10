@@ -32,6 +32,8 @@ export async function approvePublish(formData: FormData) {
     .update({ status: 'approved', reviewed_by: user.id, reviewed_at: new Date().toISOString() })
     .eq('id', req.id);
   await db.from('products').update({ status: 'published', is_active: true }).eq('id', req.product_id);
+  // من وافق على النشر (منفصل: لا يتعطل لو لم يُشغَّل ملف 008 بعد)
+  await db.from('products').update({ published_by: user.id, published_at: new Date().toISOString() }).eq('id', req.product_id);
   revalidatePath('/', 'layout');
   redirect(`${BACK}?done=1`);
 }

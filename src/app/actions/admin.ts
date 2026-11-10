@@ -55,7 +55,7 @@ function storagePathFromUrl(url: string): string | null {
 }
 
 export async function saveProduct(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase, profile } = await assertAdmin();
   const id = String(formData.get('id') ?? '');
   const back = id ? `/admin/products/${id}` : '/admin/products/new';
 
@@ -125,6 +125,11 @@ export async function saveProduct(formData: FormData) {
     const { data, error } = await supabase.from('products').insert(row).select('id').single();
     if (error || !data) fail(back, error?.code === '23505' ? 'الرابط المختصر (slug) مستخدم لمنتج آخر' : 'تعذر إنشاء المنتج');
     productId = data!.id as string;
+  }
+
+  // من نشر المنتج: عند أول نشر فقط. منفصل عن الحفظ الأساسي حتى لا يتعطل الحفظ لو لم يُشغَّل ملف 008 بعد
+  if (isActive && !existingRow?.is_active) {
+    await supabase.from('products').update({ published_by: profile.id, published_at: new Date().toISOString() }).eq('id', productId);
   }
 
   // التفاصيل الخاصة: جدول منفصل لا يقرأه إلا الأدمن والمالك (RLS)

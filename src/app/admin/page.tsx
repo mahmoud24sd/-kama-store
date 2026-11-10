@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AlertTriangle, DollarSign, Package, ShoppingBag, Users } from 'lucide-react';
+import ProductStats, { type ProductStatsData } from '@/components/admin/ProductStats';
 import { requirePermission } from '@/lib/auth';
 import type { Order } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
@@ -17,9 +18,10 @@ type Stats = {
 
 export default async function AdminDashboard() {
   const { supabase } = await requirePermission('dashboard');
-  const [{ data: stats, error }, { data: recent }] = await Promise.all([
+  const [{ data: stats, error }, { data: recent }, productStats] = await Promise.all([
     supabase.rpc('admin_stats'),
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(8),
+    supabase.rpc('admin_product_stats'),
   ]);
 
   if (error || !stats) {
@@ -73,6 +75,8 @@ export default async function AdminDashboard() {
           </div>
         )}
       </section>
+
+      <ProductStats data={(productStats.data as ProductStatsData | null) ?? null} failed={Boolean(productStats.error)} />
 
       <section>
         <div className="mb-3 flex items-center justify-between">

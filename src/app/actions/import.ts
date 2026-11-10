@@ -37,7 +37,7 @@ function num(v: string | undefined): number | null {
 }
 
 export async function importProducts(_prev: ImportState, formData: FormData): Promise<ImportState> {
-  const { supabase } = await assertAdmin();
+  const { supabase, profile } = await assertAdmin();
 
   // إما نص ملصوق من Excel / Google Sheets، أو ملف CSV
   const pasted = String(formData.get('text') ?? '').trim();
@@ -147,6 +147,14 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     if (imgRows.length > 0) {
       const { error: imgErr } = await supabase.from('product_images').insert(imgRows);
       if (imgErr) errors.push(`الدفعة التي تبدأ من سطر ${chunk[0].line}: حُفظت المنتجات لكن تعذّر حفظ بعض الصور`);
+    }
+    // سجّل من نشر المنتجات المنشورة (لا يؤثر على الاستيراد لو لم يُشغَّل ملف 008 بعد)
+    const publishedIds = chunk
+      .filter((c) => c.row.is_active)
+      .map((c) => idBySlug.get(c.row.slug as string))
+      .filter((x): x is string => Boolean(x));
+    if (publishedIds.length > 0) {
+      await supabase.from('products').update({ published_by: profile.id, published_at: new Date().toISOString() }).in('id', publishedIds);
     }
     const privRows = chunk.flatMap((c) => {
       const pid = idBySlug.get(c.row.slug as string);

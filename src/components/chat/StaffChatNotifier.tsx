@@ -31,14 +31,22 @@ export default function StaffChatNotifier() {
       setIsStaff(true);
       if (typeof Notification !== 'undefined') setPerm(Notification.permission);
       const tick = async () => {
-        const { count: c } = await supabase.from('chat_conversations').select('id', { count: 'exact', head: true }).eq('status', 'waiting');
-        if (!alive) return;
-        const n = c ?? 0;
-        if (n > prev.current && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          new Notification('Kama Store', { body: 'عميل ينتظر ردك في الدردشة' });
+        try {
+          const { count: c } = await supabase.from('chat_conversations').select('id', { count: 'exact', head: true }).eq('status', 'waiting');
+          if (!alive) return;
+          const n = c ?? 0;
+          if (n > prev.current && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try {
+              new Notification('Kama Store', { body: 'عميل ينتظر ردك في الدردشة' });
+            } catch {
+              // بعض المتصفحات (موبايل) لا تسمح بإنشاء Notification مباشرة
+            }
+          }
+          prev.current = n;
+          setCount(n);
+        } catch {
+          // فشل مؤقت في الشبكة: نحاول في الدورة التالية
         }
-        prev.current = n;
-        setCount(n);
       };
       void tick();
       timer = setInterval(() => void tick(), 10000);

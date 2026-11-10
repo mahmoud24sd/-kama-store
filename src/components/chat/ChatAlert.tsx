@@ -13,8 +13,12 @@ export default function ChatAlert() {
     const supabase = createClient();
     let alive = true;
     const tick = async () => {
-      const { count: c } = await supabase.from('chat_conversations').select('id', { count: 'exact', head: true }).eq('status', 'waiting');
-      if (alive) setCount(c ?? 0);
+      try {
+        const { count: c } = await supabase.from('chat_conversations').select('id', { count: 'exact', head: true }).eq('status', 'waiting');
+        if (alive) setCount(c ?? 0);
+      } catch {
+        // فشل مؤقت في الشبكة: نحاول في الدورة التالية
+      }
     };
     void tick();
     const t = setInterval(() => void tick(), 10000);

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import ChatBoundary from '@/components/chat/ChatBoundary';
 import StaffChatThread from '@/components/chat/StaffChatThread';
 import { requirePermission } from '@/lib/auth';
 
@@ -19,7 +20,9 @@ export default async function AdminChatThread({ params }: { params: Promise<{ id
         <h1 className="text-xl font-extrabold">محادثة: {(conv.customer_name as string) || 'عميل'}</h1>
         <Link href="/admin/chat" className="text-sm text-brand-600 hover:underline">← كل المحادثات</Link>
       </div>
-      <StaffChatThread conversationId={id} staffName={profile.full_name || 'الدعم'} />
+      <ChatBoundary>
+        <StaffChatThread conversationId={id} staffName={profile.full_name || 'الدعم'} />
+      </ChatBoundary>
     </div>
   );
 }

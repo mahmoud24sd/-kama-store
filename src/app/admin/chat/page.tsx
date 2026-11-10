@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import AutoRefresh from '@/components/chat/AutoRefresh';
 import { requirePermission } from '@/lib/auth';
 import { formatDate } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -24,8 +25,9 @@ export default async function AdminChat() {
 
   return (
     <div className="space-y-4">
+      <AutoRefresh seconds={10} />
       <h1 className="text-xl font-extrabold">الدردشة مع العملاء</h1>
-      <p className="text-sm text-gray-600">المحادثات التي ينتظر فيها العميل ردًا تظهر في الأعلى. القائمة تحتاج تحديث الصفحة لرؤية محادثات جديدة، لكن الإشعار الأصفر أعلى اللوحة يتحدّث تلقائيًا.</p>
+      <p className="text-sm text-gray-600">المحادثات التي ينتظر فيها العميل ردًا تظهر في الأعلى، والقائمة تتحدّث تلقائيًا كل 10 ثوانٍ.</p>
       {rows.length === 0 ? (
         <p className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">لا توجد محادثات بعد.</p>
       ) : (

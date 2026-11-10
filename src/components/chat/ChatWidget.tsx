@@ -26,16 +26,24 @@ export default function ChatWidget() {
   const [busy, setBusy] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [botMsgs, msgs, open, mode]);
+  // التمرير لآخر رسالة: لا نُرجع أي قيمة من الـ effect (React يعتبرها دالة تنظيف)
+  useEffect(() => {
+    const el = bottom.current?.parentElement;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [botMsgs, msgs, open, mode]);
 
   const load = useCallback(async (id: string) => {
-    const supabase = createClient();
-    const [{ data: m }, { data: c }] = await Promise.all([
-      supabase.from('chat_messages').select('id,sender,sender_name,body,created_at').eq('conversation_id', id).order('created_at', { ascending: true }),
-      supabase.from('chat_conversations').select('status').eq('id', id).maybeSingle(),
-    ]);
-    setMsgs((m ?? []) as Msg[]);
-    setStatus((c?.status as string) ?? '');
+    try {
+      const supabase = createClient();
+      const [{ data: m }, { data: c }] = await Promise.all([
+        supabase.from('chat_messages').select('id,sender,sender_name,body,created_at').eq('conversation_id', id).order('created_at', { ascending: true }),
+        supabase.from('chat_conversations').select('status').eq('id', id).maybeSingle(),
+      ]);
+      if (Array.isArray(m)) setMsgs(m as Msg[]);
+      setStatus((c?.status as string) ?? '');
+    } catch (e) {
+      console.error('[chat] load failed', e);
+    }
   }, []);
 
   // تحديث دوري للمحادثة المفتوحة مع شخص
@@ -43,7 +51,9 @@ export default function ChatWidget() {
     if (!open || mode !== 'human' || !convId) return;
     void load(convId);
     const t = setInterval(() => void load(convId), 4000);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+    };
   }, [open, mode, convId, load]);
 
   if (pathname.startsWith('/admin')) return null;

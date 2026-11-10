@@ -21,8 +21,13 @@ export type IssueState = {
 
 /** ينشئ رمزًا جديدًا (صالح 3 أيام) للطلب ويرسله على واتساب الرقم المسجّل في الحساب */
 export async function issueResetCode(_prev: IssueState, formData: FormData): Promise<IssueState> {
+  let profile;
   try {
-    const { profile } = await assertPermission('temp_password');
+    ({ profile } = await assertPermission('temp_password'));
+  } catch {
+    return { error: 'ليست لديك صلاحية لهذا الإجراء' };
+  }
+  try {
     if (!hasServiceRole) return { error: 'يلزم إضافة SUPABASE_SERVICE_ROLE_KEY في Vercel' };
     const id = z.string().uuid().safeParse(formData.get('id'));
     if (!id.success) return { error: 'بيانات غير صالحة' };
@@ -68,8 +73,9 @@ export async function issueResetCode(_prev: IssueState, formData: FormData): Pro
 
     revalidatePath('/admin/password-requests');
     return result;
-  } catch {
-    return { error: 'ليست لديك صلاحية لهذا الإجراء' };
+  } catch (e) {
+    console.error('[password-requests] issue error:', e instanceof Error ? e.message : e);
+    return { error: 'تعذّر إنشاء الرمز الآن. حاول مرة أخرى، وتأكد أنك شغّلت ملف 009 في Supabase.' };
   }
 }
 

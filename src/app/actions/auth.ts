@@ -305,7 +305,9 @@ export async function resetWithCode(_prev: FormState, formData: FormData): Promi
       .eq('user_id', match.user_id)
       .in('status', ['pending', 'sent']);
 
-    signInEmail = found.find((f) => f.id === match.user_id)?.email ?? null;
+    // حسابات الهاتف لها بريد داخلي في نظام الدخول وليس في profiles، فنقرأه من Auth
+    const { data: au } = await db.auth.admin.getUserById(match.user_id as string);
+    signInEmail = au?.user?.email ?? found.find((f) => f.id === match.user_id)?.email ?? null;
   } catch (e) {
     console.error('[auth] reset with code error:', errMsg(e));
     return { error: GENERIC_ERROR };

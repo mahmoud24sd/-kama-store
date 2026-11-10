@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { BarChart3, Boxes, KeyRound, Layers, Megaphone, MessageCircle, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
 import { requireAdmin } from '@/lib/auth';
 import ChatAlert from '@/components/chat/ChatAlert';
+import AutoRefresh from '@/components/chat/AutoRefresh';
 import { hasPermission, type Permission } from '@/lib/permissions';
 
 export const metadata: Metadata = { title: { default: 'لوحة التحكم', template: '%s | إدارة Kama Store' } };
@@ -49,14 +50,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link key={href} href={href} className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-brand-50 hover:text-brand-700">
             <Icon className="h-4 w-4" />
             {label}
+            {href === '/admin/password-requests' && pendingResets > 0 && (
+              <span className="min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs font-bold text-white">{pendingResets}</span>
+            )}
           </Link>
         ))}
       </nav>
       <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
+        {hasPermission(profile, 'temp_password') && <AutoRefresh seconds={30} />}
         {hasPermission(profile, 'chat') && <ChatAlert />}
         {pendingResets > 0 && (
           <Link href="/admin/password-requests" className="mb-4 block rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800 hover:bg-amber-100">
-            عندك {pendingResets} طلب استعادة كلمة مرور ينتظر الرد
+            🔔 عندك {pendingResets} طلب «نسيت كلمة المرور» ينتظر الرد، اضغط هنا لإرسال الرمز
           </Link>
         )}
         {children}

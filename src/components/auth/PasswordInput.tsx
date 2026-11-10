@@ -24,14 +24,14 @@ export default function PasswordInput({ id, name, autoComplete, minLength }: Pro
         minLength={minLength}
         autoComplete={autoComplete}
         dir="ltr"
-        className={`${ui.input} pe-10`}
+        className={`${ui.input} pr-10`}
       />
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
         aria-pressed={show}
-        className="absolute inset-y-0 end-0 flex w-10 items-center justify-center text-gray-500 hover:text-gray-800"
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-gray-500 hover:text-gray-800"
       >
         {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
       </button>

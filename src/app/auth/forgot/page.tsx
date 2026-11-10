@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'استعادة كلمة المرور
 
 export default function ForgotPage() {
   return (
-    <AuthShell title="استعادة كلمة المرور" subtitle="أدخل بريدك وسنرسل لك رابطًا لتعيين كلمة مرور جديدة">
+    <AuthShell title="استعادة كلمة المرور" subtitle="أدخل رقمك أو بريدك، وسيرسل لك فريق الدعم رمزًا على واتساب لتعيين كلمة مرور جديدة">
       <ForgotForm />
     </AuthShell>
   );

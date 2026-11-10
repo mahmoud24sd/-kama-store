@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server';
 import { confirmStaleAccount, createAdminClient, emailsForPhone, hasServiceRole } from '@/lib/supabase/admin';
 import { getSiteUrl } from '@/lib/site';
 import { GOVERNORATES, normalizeInternationalPhone, phoneToEmail } from '@/lib/governorates';
+import { findProfiles } from '@/lib/resetLookup';
+import { codesMatch, MAX_ATTEMPTS } from '@/lib/resetCodes';
 
 export type FormState = { error?: string; message?: string };
 
@@ -176,20 +178,151 @@ export async function signOut() {
   redirect('/');
 }
 
-export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = z.string().email('بريد إلكتروني غير صالح').safeParse(formData.get('email'));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+const RESET_REQUEST_MESSAGE =
+  'تم استلام طلبك. إذا كان الحساب موجودًا فسيرسل لك فريق الدعم رمزًا على واتساب (على الرقم المسجّل في حسابك)، وهو صالح 3 أيام. بعد وصوله افتح صفحة «لدي رمز».';
 
-  try {
-    const supabase = await createClient();
-    await supabase.auth.resetPasswordForEmail(parsed.data, {
-      redirectTo: `${siteUrl()}/auth/callback?next=/auth/reset`,
-    });
-  } catch (e) {
-    console.error('[auth] reset error:', errMsg(e));
+/** نسيت كلمة المرور: يصل طلب للأدمن (بالبريد أو الرقم)، ويُرسل له رمز على واتساب. نفس الرد دائمًا حتى لا نكشف وجود الحساب */
+export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
+  const byPhone = formData.get('mode') === 'phone';
+  const dial = String(formData.get('phone_country') ?? '20');
+  const rawPhone = String(formData.get('phone') ?? '');
+  let email = '';
+  let e164: string | null = null;
+  if (byPhone) {
+    e164 = normalizeInternationalPhone(dial, rawPhone);
+    if (!e164) return { error: 'أدخل رقم هاتف صحيح واختر الدولة' };
+  } else {
+    const parsed = z.string().trim().email('بريد إلكتروني غير صالح').safeParse(formData.get('email'));
+    if (!parsed.success) return { error: parsed.error.issues[0].message };
+    email = parsed.data;
   }
-  // نفس الرد دائمًا حتى لا نكشف وجود البريد من عدمه
-  return { message: 'إذا كان البريد مسجلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور.' };
+
+  // 1) سجّل طلبًا ينتظر الأدمن (لو وُجد حساب مطابق). طلب واحد نشط لكل حساب كل ساعة
+  if (hasServiceRole) {
+    try {
+      const db = createAdminClient();
+      const found = await findProfiles(db, byPhone ? { dial, phone: rawPhone } : { email });
+      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      for (const p of found) {
+        const { data: recent } = await db
+          .from('password_reset_requests')
+          .select('id')
+          .eq('user_id', p.id)
+          .in('status', ['pending', 'sent'])
+          .gte('created_at', since)
+          .limit(1);
+        if (recent && recent.length > 0) continue;
+        await db.from('password_reset_requests').insert({
+          user_id: p.id,
+          identifier: byPhone ? (e164 as string) : email,
+          full_name: p.full_name,
+          email: p.email,
+          phone: p.phone,
+        });
+      }
+    } catch (e) {
+      console.error('[auth] reset request error:', errMsg(e));
+    }
+  } else {
+    console.error('[auth] reset request skipped: SUPABASE_SERVICE_ROLE_KEY missing');
+  }
+
+  // 2) بريد الاستعادة التقليدي كخيار إضافي (يعمل لو إعدادات البريد في Supabase سليمة)
+  if (!byPhone) {
+    try {
+      const supabase = await createClient();
+      await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${siteUrl()}/auth/callback?next=/auth/reset` });
+    } catch (e) {
+      console.error('[auth] reset email error:', errMsg(e));
+    }
+  }
+  return { message: RESET_REQUEST_MESSAGE };
+}
+
+/** تعيين كلمة مرور جديدة بالرمز الذي أرسله الدعم (8 أرقام، صالح 3 أيام، 5 محاولات خاطئة كحد أقصى) */
+export async function resetWithCode(_prev: FormState, formData: FormData): Promise<FormState> {
+  const byPhone = formData.get('mode') === 'phone';
+  const dial = String(formData.get('phone_country') ?? '20');
+  const rawPhone = String(formData.get('phone') ?? '');
+  const BAD = 'الرمز غير صحيح أو منتهي الصلاحية. اطلب رمزًا جديدًا من «نسيت كلمة المرور».';
+
+  const toLatin = (v: string) => v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+  const parsed = z
+    .object({
+      code: z.string().regex(/^\d{8}$/, 'الرمز مكوّن من 8 أرقام'),
+      password: passwordSchema,
+      confirm: z.string(),
+      email: z.string().trim().email('بريد إلكتروني غير صالح').optional(),
+    })
+    .refine((d) => d.password === d.confirm, { message: 'كلمتا المرور غير متطابقتين', path: ['confirm'] })
+    .safeParse({
+      code: toLatin(String(formData.get('code') ?? '')).replace(/\s/g, ''),
+      password: formData.get('password'),
+      confirm: formData.get('confirm'),
+      email: byPhone ? undefined : String(formData.get('email') ?? ''),
+    });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (byPhone && !normalizeInternationalPhone(dial, rawPhone)) return { error: 'أدخل رقم هاتف صحيح واختر الدولة' };
+  if (!hasServiceRole) return { error: 'الخدمة غير متاحة حاليًا. تواصل مع الدعم.' };
+
+  let signInEmail: string | null = null;
+  try {
+    const db = createAdminClient();
+    const found = await findProfiles(db, byPhone ? { dial, phone: rawPhone } : { email: parsed.data.email });
+    if (found.length === 0) return { error: BAD };
+
+    const { data: reqs } = await db
+      .from('password_reset_requests')
+      .select('id,user_id,code_hash,attempts')
+      .in('user_id', found.map((f) => f.id))
+      .eq('status', 'sent')
+      .gt('code_expires_at', new Date().toISOString())
+      .lt('attempts', MAX_ATTEMPTS)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (!reqs || reqs.length === 0) return { error: BAD };
+
+    const match = reqs.find((r) => r.code_hash && codesMatch(r.code_hash as string, r.id as string, parsed.data.code));
+    if (!match) {
+      for (const r of reqs) {
+        const attempts = Number(r.attempts) + 1;
+        await db
+          .from('password_reset_requests')
+          .update({ attempts, ...(attempts >= MAX_ATTEMPTS ? { status: 'cancelled', code_hash: null } : {}) })
+          .eq('id', r.id);
+      }
+      return { error: BAD };
+    }
+
+    const { error: upErr } = await db.auth.admin.updateUserById(match.user_id as string, { password: parsed.data.password });
+    if (upErr) return { error: GENERIC_ERROR };
+
+    // الرمز يُستخدم مرة واحدة، وأي طلبات أخرى لنفس الحساب تُلغى
+    await db.from('password_reset_requests').update({ status: 'used', used_at: new Date().toISOString(), code_hash: null }).eq('id', match.id);
+    await db
+      .from('password_reset_requests')
+      .update({ status: 'cancelled', code_hash: null })
+      .eq('user_id', match.user_id)
+      .in('status', ['pending', 'sent']);
+
+    signInEmail = found.find((f) => f.id === match.user_id)?.email ?? null;
+  } catch (e) {
+    console.error('[auth] reset with code error:', errMsg(e));
+    return { error: GENERIC_ERROR };
+  }
+
+  let signedIn = false;
+  if (signInEmail) {
+    try {
+      const supabase = await createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email: signInEmail, password: parsed.data.password });
+      signedIn = !error;
+    } catch {
+      signedIn = false;
+    }
+  }
+  if (signedIn) redirect('/account?updated=1');
+  return { message: 'تم تغيير كلمة المرور بنجاح. سجّل الدخول بكلمة المرور الجديدة.' };
 }
 
 export async function updatePassword(_prev: FormState, formData: FormData): Promise<FormState> {

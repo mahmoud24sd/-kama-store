@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import Link from 'next/link';
-import { requestPasswordReset, signIn, signUp, updatePassword, type FormState } from '@/app/actions/auth';
+import { requestPasswordReset, resetWithCode, signIn, signUp, updatePassword, type FormState } from '@/app/actions/auth';
 import { ui } from '@/lib/ui';
 import { GOVERNORATES } from '@/lib/governorates';
 import PasswordInput from './PasswordInput';
@@ -129,20 +129,72 @@ export function RegisterForm({ next }: { next: string }) {
 
 export function ForgotForm() {
   const [state, action, pending] = useActionState(requestPasswordReset, initial);
+  const [mode, setMode] = useState<'email' | 'phone'>('phone');
   return (
-    <form action={action} className="space-y-4">
-      <div>
-        <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
-        <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
-      </div>
-      <Feedback state={state} />
-      <button type="submit" disabled={pending} className={`${ui.btnPrimary} w-full py-2.5`}>
-        {pending ? 'جارٍ الإرسال...' : 'إرسال رابط الاستعادة'}
-      </button>
-      <p className="text-center text-sm">
-        <Link href="/auth/login" className="text-brand-600 hover:underline">العودة لتسجيل الدخول</Link>
-      </p>
-    </form>
+    <div className="space-y-4">
+      <ModeTabs mode={mode} setMode={setMode} />
+      <form action={action} className="space-y-4" key={mode}>
+        <input type="hidden" name="mode" value={mode} />
+        {mode === 'email' ? (
+          <div>
+            <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
+            <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
+          </div>
+        ) : (
+          <PhoneField id="phone" label="رقم الموبايل المسجّل في حسابك" />
+        )}
+        <Feedback state={state} />
+        <button type="submit" disabled={pending} className={`${ui.btnPrimary} w-full py-2.5`}>
+          {pending ? 'جارٍ الإرسال...' : 'أرسل طلب استعادة كلمة المرور'}
+        </button>
+        <p className="text-center text-sm">
+          وصلك رمز من الدعم؟ <Link href="/auth/reset-code" className="font-semibold text-brand-600 hover:underline">لدي رمز</Link>
+        </p>
+        <p className="text-center text-sm">
+          <Link href="/auth/login" className="text-brand-600 hover:underline">العودة لتسجيل الدخول</Link>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+export function ResetCodeForm() {
+  const [state, action, pending] = useActionState(resetWithCode, initial);
+  const [mode, setMode] = useState<'email' | 'phone'>('phone');
+  return (
+    <div className="space-y-4">
+      <ModeTabs mode={mode} setMode={setMode} />
+      <form action={action} className="space-y-4" key={mode}>
+        <input type="hidden" name="mode" value={mode} />
+        {mode === 'email' ? (
+          <div>
+            <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
+            <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
+          </div>
+        ) : (
+          <PhoneField id="phone" label="رقم الموبايل المسجّل في حسابك" />
+        )}
+        <div>
+          <label htmlFor="code" className={ui.label}>الرمز (8 أرقام) الذي وصلك على واتساب</label>
+          <input id="code" name="code" required inputMode="numeric" autoComplete="one-time-code" maxLength={8} dir="ltr" placeholder="12345678" className={`${ui.input} tracking-widest`} />
+        </div>
+        <div>
+          <label htmlFor="password" className={ui.label}>كلمة المرور الجديدة (8 أحرف على الأقل)</label>
+          <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} />
+        </div>
+        <div>
+          <label htmlFor="confirm" className={ui.label}>تأكيد كلمة المرور</label>
+          <PasswordInput id="confirm" name="confirm" autoComplete="new-password" minLength={8} />
+        </div>
+        <Feedback state={state} />
+        <button type="submit" disabled={pending} className={`${ui.btnPrimary} w-full py-2.5`}>
+          {pending ? 'جارٍ الحفظ...' : 'تغيير كلمة المرور'}
+        </button>
+        <p className="text-center text-sm">
+          <Link href="/auth/forgot" className="text-brand-600 hover:underline">لم يصلك رمز؟ اطلب رمزًا</Link>
+        </p>
+      </form>
+    </div>
   );
 }
 

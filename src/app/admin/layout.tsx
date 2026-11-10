@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BarChart3, Boxes, Layers, Megaphone, MessageCircle, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
+import { BarChart3, Boxes, KeyRound, Layers, Megaphone, MessageCircle, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
 import { requireAdmin } from '@/lib/auth';
 import ChatAlert from '@/components/chat/ChatAlert';
 import { hasPermission, type Permission } from '@/lib/permissions';
@@ -20,6 +20,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/customers', label: 'العملاء', icon: Users, perm: 'users' },
   { href: '/admin/publishing', label: 'طلبات النشر', icon: Upload, perm: 'publishing' },
   { href: '/admin/chat', label: 'الدردشة', icon: MessageCircle, perm: 'chat' },
+  { href: '/admin/password-requests', label: 'طلبات كلمة المرور', icon: KeyRound, perm: 'temp_password' },
   { href: '/admin/reviews', label: 'التقييمات', icon: Star },
   { href: '/admin/earnings', label: 'الأرباح والسحب', icon: Wallet, perm: 'withdraw' },
   { href: '/admin/users', label: 'المستخدمون', icon: UserCog, owner: true },
@@ -30,7 +31,16 @@ const LINKS: NavLink[] = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // حماية على السيرفر: غير الموظف يُعاد توجيهه (إضافة إلى middleware و RLS)
-  const { profile } = await requireAdmin();
+  const { profile, supabase } = await requireAdmin();
+  let pendingResets = 0;
+  if (hasPermission(profile, 'temp_password')) {
+    try {
+      const { count } = await supabase.from('password_reset_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+      pendingResets = count ?? 0;
+    } catch {
+      pendingResets = 0;
+    }
+  }
   const links = LINKS.filter((l) => (l.owner ? profile.role === 'owner' : l.perm ? hasPermission(profile, l.perm) : true));
   return (
     <div className="grid gap-4 md:grid-cols-[13rem_1fr]">
@@ -44,6 +54,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </nav>
       <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
         {hasPermission(profile, 'chat') && <ChatAlert />}
+        {pendingResets > 0 && (
+          <Link href="/admin/password-requests" className="mb-4 block rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800 hover:bg-amber-100">
+            عندك {pendingResets} طلب استعادة كلمة مرور ينتظر الرد
+          </Link>
+        )}
         {children}
       </div>
     </div>

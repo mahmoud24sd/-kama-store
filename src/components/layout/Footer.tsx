@@ -3,9 +3,12 @@ import { Facebook, Instagram, Mail, MessageCircle, Phone } from 'lucide-react';
 import Logo from './Logo';
 import { TikTokIcon } from './SocialIcons';
 import { getContactSettings, whatsappLink } from '@/lib/settings';
+import { getVisitCount } from '@/lib/visits';
+import AdRequestForm from './AdRequestForm';
+import VisitCounter from './VisitCounter';
 
 export default async function Footer() {
-  const c = await getContactSettings();
+  const [c, visits] = await Promise.all([getContactSettings(), getVisitCount()]);
   const { email, phone, facebook, instagram, tiktok } = c;
   const whatsapp = c.whatsapp ? whatsappLink(c.whatsapp) : '';
   const hasContact = Boolean(email || phone || whatsapp || facebook || instagram || tiktok);
@@ -95,8 +98,20 @@ export default async function Footer() {
             )}
           </div>
         </div>
-        <div className="border-t border-white/10 py-4 text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} Kama Store. جميع الحقوق محفوظة.
+        <section id="advertise" className="border-t border-white/10">
+          <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-2 text-lg font-bold text-white">أعلن معنا</h3>
+              <p className="leading-7 text-gray-400">
+                تريد أن يصل إعلانك إلى زوار Kama Store؟ اترك بياناتك وسنتواصل معك لتحديد المساحة والسعر المناسبين.
+              </p>
+            </div>
+            <AdRequestForm />
+          </div>
+        </section>
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-white/10 py-4 text-center text-xs text-gray-400">
+          <span>© {new Date().getFullYear()} Kama Store. جميع الحقوق محفوظة.</span>
+          <VisitCounter initial={visits} />
         </div>
       </div>
     </footer>

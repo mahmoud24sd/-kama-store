@@ -86,24 +86,20 @@ export function LoginForm({ next }: { next: string }) {
 
 export function RegisterForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signUp, initial);
-  const [mode, setMode] = useState<'email' | 'phone'>('email');
   return (
     <div className="space-y-4">
-    <ModeTabs mode={mode} setMode={setMode} />
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
-      <input type="hidden" name="mode" value={mode} />
+      <input type="hidden" name="mode" value="email" />
       <div>
         <label htmlFor="full_name" className={ui.label}>الاسم الكامل</label>
         <input id="full_name" name="full_name" required minLength={2} autoComplete="name" className={ui.input} />
       </div>
-      {mode === 'email' && (
-        <div>
-          <label htmlFor="email" className={ui.label}>البريد الإلكتروني</label>
-          <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
-        </div>
-      )}
-      <PhoneField id="phone" label="رقم الموبايل" />
+      <div>
+        <label htmlFor="email" className={ui.label}>البريد الإلكتروني *</label>
+        <input id="email" name="email" type="email" required autoComplete="email" dir="ltr" className={ui.input} />
+      </div>
+      <PhoneField id="phone" label="رقم الموبايل *" />
       <div>
         <label htmlFor="governorate" className={ui.label}>المحافظة</label>
         <select id="governorate" name="governorate" required defaultValue="" className={ui.input}>

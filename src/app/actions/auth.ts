@@ -98,7 +98,8 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 }
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
-  const byPhone = formData.get('mode') === 'phone';
+  // التسجيل يتطلب البريد الإلكتروني ورقم الهاتف معًا (الاسم والمحافظة وكلمة المرور أيضًا)
+  const byPhone = false;
   const phoneE164 = normalizeInternationalPhone(String(formData.get('phone_country') ?? '20'), String(formData.get('phone') ?? '')) ?? '';
   // التسجيل برقم الهاتف لا يرسل بريدًا أبدًا، فيحتاج المفتاح السري للسيرفر
   if (byPhone && !hasServiceRole) return { error: 'التسجيل برقم الهاتف غير متاح حاليًا. سجّل بالبريد الإلكتروني.' };

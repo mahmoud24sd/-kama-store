@@ -5,9 +5,9 @@ export async function GET() {
   const csv =
     '﻿' +
     [
-      'name,price,compare_at_price,stock,category,brand,shop_name,description,image_urls,publish',
-      '"تيشيرت قطن",199,249,20,أزياء,Kama,محل كاما,"تيشيرت قطن مريح","https://example.com/1.jpg|https://example.com/2.jpg",yes',
-      '"حقيبة ظهر",350,,10,أزياء,,,,"https://example.com/bag.jpg",',
+      'name,price,compare_at_price,stock,category,brand,shop_name,description,details,image_urls,publish,cost_price,supplier,private_notes',
+      '"تيشيرت قطن",199,249,20,أزياء,Kama,محل كاما,"تيشيرت قطن مريح","الخامة: قطن 100%|المقاسات: S - M - L|بلد الصنع: مصر","https://example.com/1.jpg|https://example.com/2.jpg",yes,120,مصنع النور,"خصم 10% للكمية"',
+      '"حقيبة ظهر",350,,10,أزياء,,,,,"https://example.com/bag.jpg",,200,,',
     ].join('\r\n');
   return new Response(csv, {
     headers: {

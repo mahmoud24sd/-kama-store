@@ -72,6 +72,15 @@ export async function saveProduct(formData: FormData) {
   if (!parsed.success) fail(back, parsed.error.issues[0].message);
   const d = parsed.data;
 
+  // تفاصيل عامة (يراها العميل) وخاصة (للأدمن والمالك فقط). لا نلمس الأعمدة الجديدة إلا عند استخدامها
+  const details = String(formData.get('details') ?? '').trim().slice(0, 5000);
+  const hadDetails = formData.get('had_details') === '1';
+  const privateCost = toNumber(formData.get('private_cost_price'));
+  const privateSupplier = String(formData.get('private_supplier') ?? '').trim().slice(0, 200);
+  const privateNotes = String(formData.get('private_notes') ?? '').trim().slice(0, 3000);
+  const hadPrivate = formData.get('had_private') === '1';
+  if (privateCost !== null && privateCost < 0) fail(back, 'سعر التكلفة لا يمكن أن يكون سالبًا');
+
   const compareAt = toNumber(formData.get('compare_at_price'));
   if (compareAt !== null && compareAt < d.price) fail(back, 'السعر قبل الخصم يجب أن يكون أكبر من أو يساوي السعر الحالي');
 
@@ -102,6 +111,7 @@ export async function saveProduct(formData: FormData) {
     stock: d.stock,
     is_active: isActive,
     ...(d.shop_name ? { shop_name: d.shop_name } : {}),
+    ...(details ? { details } : hadDetails ? { details: null } : {}),
     ...(existingRow && 'status' in existingRow && intent !== 'save' ? { status: isActive ? 'published' : 'draft' } : {}),
     is_deal: checkbox(formData.get('is_deal')),
     deal_ends_at: dealEnds ? dealEnds.toISOString() : null,
@@ -115,6 +125,23 @@ export async function saveProduct(formData: FormData) {
     const { data, error } = await supabase.from('products').insert(row).select('id').single();
     if (error || !data) fail(back, error?.code === '23505' ? 'الرابط المختصر (slug) مستخدم لمنتج آخر' : 'تعذر إنشاء المنتج');
     productId = data!.id as string;
+  }
+
+  // التفاصيل الخاصة: جدول منفصل لا يقرأه إلا الأدمن والمالك (RLS)
+  if (privateCost !== null || privateSupplier || privateNotes) {
+    const { error: pErr } = await supabase.from('product_private').upsert(
+      {
+        product_id: productId,
+        cost_price: privateCost,
+        supplier: privateSupplier || null,
+        notes: privateNotes || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'product_id' },
+    );
+    if (pErr) fail(`/admin/products/${productId}`, 'تم حفظ المنتج لكن تعذّر حفظ التفاصيل الخاصة. شغّل ملف supabase/migrations/006_product_details.sql في Supabase');
+  } else if (hadPrivate) {
+    await supabase.from('product_private').delete().eq('product_id', productId);
   }
 
   // حذف الصور المحددة

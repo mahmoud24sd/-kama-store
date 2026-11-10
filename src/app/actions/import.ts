@@ -20,6 +20,10 @@ const ALIASES: Record<string, string[]> = {
   brand: ['brand', 'العلامة التجارية', 'الماركة'],
   shop_name: ['shop_name', 'اسم المحل'],
   description: ['description', 'الوصف'],
+  details: ['details', 'التفاصيل', 'تفاصيل', 'التفاصيل العامة', 'المواصفات'],
+  cost_price: ['cost_price', 'سعر التكلفة', 'التكلفة'],
+  supplier: ['supplier', 'المورد'],
+  private_notes: ['private_notes', 'ملاحظات خاصة', 'تفاصيل خاصة'],
   image_urls: ['image_urls', 'images', 'روابط الصور', 'الصور'],
   publish: ['publish', 'نشر', 'ظاهر'],
 };
@@ -66,7 +70,8 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
   }
 
   const errors: string[] = [];
-  type Prepared = { row: Record<string, unknown>; images: string[]; line: number };
+  type PrivateRow = { cost_price: number | null; supplier: string | null; notes: string | null };
+  type Prepared = { row: Record<string, unknown>; images: string[]; line: number; priv: PrivateRow | null };
   const valid: Prepared[] = [];
 
   rows.slice(1).forEach((r, i) => {
@@ -75,11 +80,14 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     const price = num(get(r, 'price'));
     const stock = num(get(r, 'stock'));
     const compare = num(get(r, 'compare_at_price'));
+    const cost = num(get(r, 'cost_price'));
     if (name.length < 2) return void errors.push(`سطر ${line}: اسم المنتج مطلوب`);
     if (name.length > 200) return void errors.push(`سطر ${line}: الاسم أطول من 200 حرف`);
     if (price === null || Number.isNaN(price) || price < 0) return void errors.push(`سطر ${line} (${name}): السعر غير صالح`);
     if (stock !== null && (Number.isNaN(stock) || stock < 0 || !Number.isInteger(stock))) return void errors.push(`سطر ${line} (${name}): المخزون يجب أن يكون رقمًا صحيحًا`);
     if (compare !== null && (Number.isNaN(compare) || compare < price)) return void errors.push(`سطر ${line} (${name}): السعر قبل الخصم يجب أن يكون أكبر من أو يساوي السعر`);
+
+    if (cost !== null && (Number.isNaN(cost) || cost < 0)) return void errors.push(`سطر ${line} (${name}): سعر التكلفة غير صالح`);
 
     const catName = (get(r, 'category') ?? '').toLowerCase();
     if (catName && !catMap.has(catName)) return void errors.push(`سطر ${line} (${name}): القسم «${get(r, 'category')}» غير موجود، أنشئه أولًا من صفحة الأقسام`);
@@ -99,15 +107,21 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
 
     const publish = YES.includes((get(r, 'publish') ?? '').toLowerCase());
     const shop = get(r, 'shop_name');
+    // التفاصيل العامة: كل خاصية في سطر، أو افصل بينها بالعلامة |
+    const details = (get(r, 'details') ?? '').replace(/\s*\|\s*/g, '\n').trim().slice(0, 5000);
+    const supplier = (get(r, 'supplier') ?? '').slice(0, 200);
+    const pNotes = (get(r, 'private_notes') ?? '').slice(0, 3000);
     valid.push({
       line,
       images,
+      priv: cost !== null || supplier || pNotes ? { cost_price: cost, supplier: supplier || null, notes: pNotes || null } : null,
       row: {
         name,
         slug: `${slugify(name) || 'p'}-${Math.random().toString(36).slice(2, 8)}`,
         description: get(r, 'description') || null,
         brand: get(r, 'brand') || null,
         ...(shop ? { shop_name: shop } : {}),
+        ...(details ? { details } : {}),
         category_id: catName ? catMap.get(catName) : null,
         price,
         compare_at_price: compare,
@@ -133,6 +147,14 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     if (imgRows.length > 0) {
       const { error: imgErr } = await supabase.from('product_images').insert(imgRows);
       if (imgErr) errors.push(`الدفعة التي تبدأ من سطر ${chunk[0].line}: حُفظت المنتجات لكن تعذّر حفظ بعض الصور`);
+    }
+    const privRows = chunk.flatMap((c) => {
+      const pid = idBySlug.get(c.row.slug as string);
+      return pid && c.priv ? [{ product_id: pid, ...c.priv }] : [];
+    });
+    if (privRows.length > 0) {
+      const { error: privErr } = await supabase.from('product_private').insert(privRows);
+      if (privErr) errors.push(`الدفعة التي تبدأ من سطر ${chunk[0].line}: حُفظت المنتجات لكن تعذّر حفظ التفاصيل الخاصة (شغّل ملف supabase/migrations/006_product_details.sql)`);
     }
     created += data.length;
   }

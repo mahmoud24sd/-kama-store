@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { saveProduct } from '@/app/actions/admin';
-import type { Category, Product } from '@/lib/types';
+import type { Category, Product, ProductPrivate } from '@/lib/types';
 import { sortedImages } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
@@ -11,7 +11,7 @@ function toLocalInput(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export default function ProductForm({ product, categories }: { product?: Product; categories: Category[] }) {
+export default function ProductForm({ product, categories, privateInfo }: { product?: Product; categories: Category[]; privateInfo?: ProductPrivate | null }) {
   const images = product ? sortedImages(product) : [];
   const variantsText = (product?.product_variants ?? [])
     .map((v) => [v.color ?? '', v.size ?? '', v.stock, v.price_override ?? '', v.sku ?? ''].join(' | ').replace(/( \| )+$/, ''))
@@ -61,7 +61,39 @@ export default function ProductForm({ product, categories }: { product?: Product
           <label className={ui.label} htmlFor="description">الوصف</label>
           <textarea id="description" name="description" rows={5} defaultValue={product?.description ?? ''} className={ui.input} />
         </div>
+        <div className="sm:col-span-2">
+          <label className={ui.label} htmlFor="details">تفاصيل عامة (تظهر للعميل في صفحة المنتج)</label>
+          <textarea
+            id="details"
+            name="details"
+            rows={5}
+            defaultValue={product?.details ?? ''}
+            placeholder={'الخامة: قطن 100%\nالمقاسات: S - M - L\nبلد الصنع: مصر\nالضمان: سنة'}
+            className={ui.input}
+          />
+          <p className="mt-1 text-xs text-gray-500">سطر لكل خاصية بالشكل <b>الخاصية: القيمة</b>. يمكن كتابة سطر عادي أيضًا.</p>
+          {product?.details && <input type="hidden" name="had_details" value="1" />}
+        </div>
       </div>
+
+      <fieldset className="space-y-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 p-4">
+        <legend className="px-2 text-sm font-bold text-amber-800">🔒 تفاصيل خاصة (يراها الأدمن والمالك فقط، لا تظهر للعملاء أبدًا)</legend>
+        {(privateInfo?.cost_price != null || privateInfo?.supplier || privateInfo?.notes) && <input type="hidden" name="had_private" value="1" />}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className={ui.label} htmlFor="private_cost_price">سعر التكلفة (ج.م)</label>
+            <input id="private_cost_price" name="private_cost_price" type="number" min={0} step="0.01" defaultValue={privateInfo?.cost_price ?? ''} className={ui.input} />
+          </div>
+          <div>
+            <label className={ui.label} htmlFor="private_supplier">المورد / المصدر</label>
+            <input id="private_supplier" name="private_supplier" defaultValue={privateInfo?.supplier ?? ''} className={ui.input} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={ui.label} htmlFor="private_notes">ملاحظات خاصة</label>
+            <textarea id="private_notes" name="private_notes" rows={3} defaultValue={privateInfo?.notes ?? ''} className={ui.input} />
+          </div>
+        </div>
+      </fieldset>
 
       <div className="flex flex-wrap items-center gap-6 rounded-lg bg-gray-50 p-3 text-sm">
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${product?.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>

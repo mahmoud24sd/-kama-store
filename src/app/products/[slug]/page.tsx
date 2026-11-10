@@ -7,6 +7,7 @@ import ProductGrid from '@/components/product/ProductGrid';
 import ReviewForm from '@/components/product/ReviewForm';
 import Stars from '@/components/product/Stars';
 import { getUser } from '@/lib/auth';
+import { parseDetailLines } from '@/lib/productDetails';
 import { getFavoriteIds, getProductBySlug, hasPurchased } from '@/lib/queries';
 import { discountPercent, formatDate, formatPrice, safeDecode, sortedImages } from '@/lib/utils';
 
@@ -36,6 +37,7 @@ export default async function ProductPage({ params }: Props) {
   const images = sortedImages(product).map((i) => i.url);
   const discount = discountPercent(product.price, product.compare_at_price);
   const baseStock = product.stock;
+  const detailLines = parseDetailLines(product.details);
 
   return (
     <div className="space-y-5">
@@ -92,6 +94,20 @@ export default async function ProductPage({ params }: Props) {
         <section className="rounded-xl bg-white p-4 shadow-sm lg:p-6">
           <h2 className="mb-3 text-xl font-extrabold">وصف المنتج</h2>
           <p className="whitespace-pre-line leading-8 text-gray-700">{product.description}</p>
+        </section>
+      )}
+
+      {detailLines.length > 0 && (
+        <section className="rounded-xl bg-white p-4 shadow-sm lg:p-6">
+          <h2 className="mb-3 text-xl font-extrabold">تفاصيل المنتج</h2>
+          <dl className="divide-y divide-gray-100 text-sm">
+            {detailLines.map((l, i) => (
+              <div key={i} className="flex gap-4 py-2">
+                {l.label && <dt className="w-40 shrink-0 font-semibold text-gray-600">{l.label}</dt>}
+                <dd className="text-gray-800">{l.value}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
       )}
 

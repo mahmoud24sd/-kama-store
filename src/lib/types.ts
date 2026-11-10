@@ -26,6 +26,7 @@ export type Product = {
   name: string;
   slug: string;
   description: string | null;
+  details?: string | null;
   brand: string | null;
   shop_name?: string | null;
   seller_id?: string | null;
@@ -43,6 +44,13 @@ export type Product = {
   product_images: ProductImage[];
   product_variants: Variant[];
   categories: { name: string; slug: string } | null;
+};
+
+export type ProductPrivate = {
+  product_id: string;
+  cost_price: number | null;
+  supplier: string | null;
+  notes: string | null;
 };
 
 export type Review = {

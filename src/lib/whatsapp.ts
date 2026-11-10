@@ -25,6 +25,8 @@ const cfg = () => ({
   template: (process.env.WHATSAPP_TEMPLATE_NAME ?? '').trim(),
   lang: (process.env.WHATSAPP_TEMPLATE_LANG ?? 'ar').trim(),
   version: (process.env.WHATSAPP_API_VERSION ?? 'v23.0').trim(),
+  // auth = قالب مصادقة (زر نسخ الرمز، الأسهل والأضمن) | utility = قالب نصه متغيّران: الرمز ثم الرابط
+  kind: (process.env.WHATSAPP_TEMPLATE_KIND ?? 'auth').trim().toLowerCase(),
 });
 
 /** هل الإرسال التلقائي عبر WhatsApp Cloud API مُعدّ؟ (اختياري: يحتاج حساب Meta Business وقالب معتمد) */
@@ -51,7 +53,13 @@ export async function sendResetViaCloudApi(phone: string, code: string, siteUrl:
         template: {
           name: c.template,
           language: { code: c.lang },
-          components: [{ type: 'body', parameters: [{ type: 'text', text: code }, { type: 'text', text: `${siteUrl}/auth/reset-code` }] }],
+          components:
+            c.kind === 'utility'
+              ? [{ type: 'body', parameters: [{ type: 'text', text: code }, { type: 'text', text: `${siteUrl}/auth/reset-code` }] }]
+              : [
+                  { type: 'body', parameters: [{ type: 'text', text: code }] },
+                  { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
+                ],
         },
       }),
       signal: AbortSignal.timeout(8000),

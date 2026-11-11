@@ -170,7 +170,16 @@ async function collect(db: Db, m: TgMsg) {
   if (error && m.media_group_id) await append();
 }
 
-async function command(db: Db, m: TgMsg, text: string) {
+async function getAdmins(db: Db): Promise<string[]> {
+  try {
+    const v = JSON.parse(await getState(db, 'admins', '[]')) as unknown;
+    return Array.isArray(v) ? v.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
   const [cmdRaw, ...rest] = text.trim().split(/\s+/);
   const cmd = cmdRaw.split('@')[0].toLowerCase();
   const arg = rest.join(' ').trim();
@@ -190,10 +199,26 @@ async function command(db: Db, m: TgMsg, text: string) {
         '/category أزياء  ← القسم في الملف',
         '/publish on|off  ← هل المنتجات تتنشر مباشرة عند الاستيراد',
         '/count  ← كم منتج محفوظ',
+        ...(isOwner ? ['/addadmin 123456789  ← ضيف أدمن (رقم تليجرام)', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن'] : []),
         '/export  ← ملف إكسل بالجديد فقط',
         '/exportall  ← ملف بكل المنتجات',
       ].join('\n'),
     );
+  }
+  if (cmd === '/addadmin' || cmd === '/removeadmin' || cmd === '/admins') {
+    if (!isOwner) return say(chat, 'الأمر ده للمالك بس.');
+    const admins = await getAdmins(db);
+    if (cmd === '/admins') return say(chat, admins.length ? `الأدمن:\n${admins.join('\n')}` : 'مفيش أدمن مضاف. اكتب /addadmin رقم_التليجرام');
+    const id = arg.replace(/\D/g, '');
+    if (id.length < 5 || id.length > 15) return say(chat, 'اكتب رقم حساب تليجرام، مثلًا: /addadmin 123456789\n(الشخص يبعت /start للبوت ويطلعله رقمه)');
+    if (id === OWNER()) return say(chat, 'ده رقمك إنت المالك.');
+    if (cmd === '/addadmin') {
+      if (admins.length >= 20) return say(chat, 'وصلت الحد الأقصى (20 أدمن).');
+      await setState(db, 'admins', JSON.stringify([...new Set([...admins, id])]));
+      return say(chat, `تمت إضافة ${id} كأدمن. يقدر يستخدم كل أوامر البوت ما عدا إضافة وحذف الأدمن.`);
+    }
+    await setState(db, 'admins', JSON.stringify(admins.filter((a) => a !== id)));
+    return say(chat, `تم حذف ${id} من الأدمن.`);
   }
   if (cmd === '/add') {
     const n = Number(arg);
@@ -277,19 +302,20 @@ export async function POST(req: Request) {
     if (!m) return NextResponse.json({ ok: true });
     const db = createAdminClient();
     const isOwner = String(m.from?.id ?? '') === OWNER() && OWNER() !== '';
+    const isStaff = isOwner || (m.from?.id !== undefined && (await getAdmins(db)).includes(String(m.from.id)));
     const text = m.text ?? '';
 
     if (text.startsWith('/')) {
-      if (text.toLowerCase().startsWith('/start') && !isOwner) await say(m.chat.id, `معرّفك: ${m.from?.id}\nضيفه في TELEGRAM_OWNER_ID في Vercel.`);
-      else if (isOwner) await command(db, m, text);
+      if (text.toLowerCase().startsWith('/start') && !isStaff) await say(m.chat.id, `معرّفك: ${m.from?.id}\nابعته للمالك عشان يضيفك أدمن.${OWNER() ? '' : '\n(لو إنت المالك: ضيفه في TELEGRAM_OWNER_ID في Vercel.)'}`);
+      else if (isStaff && m.chat.type === 'private') await command(db, m, text, isOwner);
       return NextResponse.json({ ok: true });
     }
-    if (isOwner && m.chat.type === 'private' && !m.photo && channelFromLink(text) && /t\.me|telegram\.me|^@/i.test(text)) {
-      await command(db, m, `/channel ${text.trim()}`);
+    if (isStaff && m.chat.type === 'private' && !m.photo && channelFromLink(text) && /t\.me|telegram\.me|^@/i.test(text)) {
+      await command(db, m, `/channel ${text.trim()}`, isOwner);
       return NextResponse.json({ ok: true });
     }
     // المحادثة الخاصة: للمالك فقط. الجروبات والقنوات التي أُضيف لها البوت: نجمع منها
-    if (m.chat.type === 'private' && !isOwner) return NextResponse.json({ ok: true });
+    if (m.chat.type === 'private' && !isStaff) return NextResponse.json({ ok: true });
     await collect(db, m);
   } catch (e) {
     console.error('[telegram] error', e instanceof Error ? e.message : e);

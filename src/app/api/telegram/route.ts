@@ -1,7 +1,8 @@
-import { randomUUID, timingSafeEqual } from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { after, NextResponse } from 'next/server';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { csvRow, parseCaption, withMarkup } from '@/lib/telegramParse';
+import { channelFromLink, fetchChannelPage, groupPosts } from '@/lib/tmeScrape';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -72,6 +73,67 @@ async function savePhoto(db: Db, fileId: string): Promise<string | null> {
 const sourceOf = (m: TgMsg) =>
   m.forward_origin?.chat?.title || m.forward_from_chat?.title || m.forward_origin?.sender_user?.first_name || m.forward_origin?.sender_user_name || m.chat.title || 'تليجرام';
 
+type Job = { channel: string; cutoff: number; before?: number; chat: number; collected: number; done?: boolean };
+
+async function uploadFromUrl(db: Db, url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return null;
+    const type = res.headers.get('content-type') ?? 'image/jpeg';
+    const ext = type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg';
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length > 5 * 1024 * 1024) return null;
+    const objectPath = `telegram/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${ext}`;
+    const { error } = await db.storage.from(BUCKET).upload(objectPath, bytes, { contentType: type.startsWith('image/') ? type : 'image/jpeg', upsert: false });
+    return error ? null : db.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl;
+  } catch {
+    return null;
+  }
+}
+
+const channelChatId = (channel: string) => -(parseInt(createHash('sha1').update(channel.toLowerCase()).digest('hex').slice(0, 11), 16) + 1000000);
+
+/** يعالج قناة عامة صفحة بصفحة حتى ينتهي وقت التنفيذ أو نصل لتاريخ البداية. يُستأنف بـ /continue */
+async function runJob(db: Db) {
+  const raw = await getState(db, 'job', '');
+  if (!raw) return;
+  const job = JSON.parse(raw) as Job;
+  const started = Date.now();
+  let finished = false;
+  while (Date.now() - started < 40000) {
+    const { posts, ok } = await fetchChannelPage(job.channel, job.before);
+    if (!ok) {
+      await say(job.chat, 'ما قدرتش أفتح القناة. تأكد إنها عامة وإن الرابط صحيح.');
+      await db.from('telegram_state').delete().eq('key', 'job');
+      return;
+    }
+    if (posts.length === 0) { finished = true; break; }
+    const minId = Math.min(...posts.map((p) => p.id));
+    const inRange = posts.filter((p) => p.time >= job.cutoff);
+    const grouped = groupPosts(inRange);
+    for (const g of grouped) {
+      const parsed = parseCaption(g.text);
+      if (!parsed.name || parsed.price === null || g.photos.length === 0) continue;
+      const urls = (await Promise.all(g.photos.slice(0, 4).map((u) => uploadFromUrl(db, u)))).filter((u): u is string => Boolean(u));
+      if (urls.length === 0) continue;
+      const { error } = await db.from('telegram_items').upsert(
+        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url },
+        { onConflict: 'chat_id,message_id', ignoreDuplicates: true },
+      );
+      if (!error) job.collected += 1;
+    }
+    if (posts.some((p) => p.time < job.cutoff) || minId <= 1) { finished = true; break; }
+    job.before = minId;
+  }
+  if (finished) {
+    await db.from('telegram_state').delete().eq('key', 'job');
+    await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (فيه اسم وسعر وصورة).\nاكتب /export عشان تاخد ملف إكسل.`);
+  } else {
+    await setState(db, 'job', JSON.stringify(job));
+    await say(job.chat, `لسه شغّال على @${job.channel}: اتحفظ ${job.collected} لحد دلوقتي. اكتب /continue عشان يكمل.`);
+  }
+}
+
 async function collect(db: Db, m: TgMsg) {
   const caption = m.caption ?? m.text ?? '';
   const largest = m.photo && m.photo.length > 0 ? m.photo[m.photo.length - 1] : null;
@@ -121,7 +183,10 @@ async function command(db: Db, m: TgMsg, text: string) {
         `معرّفك: ${m.from?.id}`,
         'ابعت لي (أو حوّل لي) رسائل فيها صورة وسعر، وأنا أحفظها.',
         '',
-        '/markup 20  ← زيادة 20% على الأسعار',
+        '/channel https://t.me/اسم_القناة 30  ← اسحب منتجات آخر 30 يوم من قناة عامة',
+        '/continue  ← كمّل السحب لو وقف',
+        '/add 50  ← زيادة 50 جنيه على كل منتج',
+        '/markup 20  ← زيادة نسبة 20% (اختياري)',
         '/category أزياء  ← القسم في الملف',
         '/publish on|off  ← هل المنتجات تتنشر مباشرة عند الاستيراد',
         '/count  ← كم منتج محفوظ',
@@ -129,6 +194,29 @@ async function command(db: Db, m: TgMsg, text: string) {
         '/exportall  ← ملف بكل المنتجات',
       ].join('\n'),
     );
+  }
+  if (cmd === '/add') {
+    const n = Number(arg);
+    if (!Number.isFinite(n) || n < 0 || n > 100000) return say(chat, 'اكتب رقم، مثلًا: /add 50');
+    await setState(db, 'fixed', String(n));
+    return say(chat, `تم. هيتزاد ${n} جنيه على كل منتج في الملف.`);
+  }
+  if (cmd === '/channel') {
+    const link = rest[0] ?? '';
+    const channel = channelFromLink(link);
+    if (!channel) return say(chat, 'ابعت رابط قناة عامة، مثلًا:\n/channel https://t.me/اسم_القناة 30\n(الجروبات والقنوات الخاصة مش بتتسحب بالطريقة دي. استخدم صفحة التصدير في الموقع.)');
+    const days = Math.min(Math.max(Number(rest[1]) || 30, 1), 365);
+    const job: Job = { channel, cutoff: Date.now() - days * 86400000, chat, collected: 0 };
+    await setState(db, 'job', JSON.stringify(job));
+    await say(chat, `تمام، بسحب منتجات @${channel} لآخر ${days} يوم. هبعتلك رسالة لما أخلّص. (استخدم منتجات عندك إذن منها)`);
+    after(() => runJob(db));
+    return;
+  }
+  if (cmd === '/continue') {
+    if (!(await getState(db, 'job', ''))) return say(chat, 'مفيش سحب شغّال دلوقتي.');
+    await say(chat, 'بكمّل...');
+    after(() => runJob(db));
+    return;
   }
   if (cmd === '/markup') {
     const n = Number(arg.replace('%', ''));
@@ -158,15 +246,16 @@ async function command(db: Db, m: TgMsg, text: string) {
     const { data } = await q;
     const items = data ?? [];
     const markup = Number(await getState(db, 'markup', '0'));
+    const fixed = Number(await getState(db, 'fixed', '0'));
     const category = await getState(db, 'category', '');
     const publish = await getState(db, 'publish', 'no');
     const ready = items.filter((i) => i.price != null && i.name && (i.images as string[]).length > 0);
     const skipped = items.length - ready.length;
     if (ready.length === 0) return say(chat, skipped > 0 ? `${skipped} منتج ناقص (اسم أو سعر أو صورة)، ماتصدّرش.` : 'مفيش منتجات جديدة.');
     const rows = ready.map((i) =>
-      csvRow([i.name, withMarkup(Number(i.price), markup), '', 10, category, '', '', i.description ?? '', '', (i.images as string[]).join('|'), publish === 'yes' ? 'yes' : '', i.price, i.source ?? '', '', '', '']),
+      csvRow([i.name, withMarkup(Number(i.price), markup) + fixed, '', 10, category, '', '', i.description ?? '', '', (i.images as string[]).join('|'), publish === 'yes' ? 'yes' : '', i.price, i.source ?? '', `السعر الأصلي: ${i.price} · المصدر: ${i.source ?? ''}${i.posted_at ? ' · ' + new Date(i.posted_at as string).toLocaleDateString('en-GB') : ''}${i.post_url ? ' · ' + i.post_url : ''}`, '', '']),
     );
-    await sendCsv(chat, [HEADER, ...rows].join('\r\n'), `products-${new Date().toISOString().slice(0, 10)}.csv`, `${ready.length} منتج · زيادة ${markup}%${skipped ? ` · ${skipped} ناقص ماتصدّرش` : ''}`);
+    await sendCsv(chat, [HEADER, ...rows].join('\r\n'), `products-${new Date().toISOString().slice(0, 10)}.csv`, `${ready.length} منتج · زيادة ${fixed} جنيه${markup ? ` + ${markup}%` : ''}${skipped ? ` · ${skipped} ناقص ماتصدّرش` : ''}`);
     await db.from('telegram_items').update({ exported_at: new Date().toISOString() }).in('id', ready.map((i) => i.id as string));
     return;
   }
@@ -193,6 +282,10 @@ export async function POST(req: Request) {
     if (text.startsWith('/')) {
       if (text.toLowerCase().startsWith('/start') && !isOwner) await say(m.chat.id, `معرّفك: ${m.from?.id}\nضيفه في TELEGRAM_OWNER_ID في Vercel.`);
       else if (isOwner) await command(db, m, text);
+      return NextResponse.json({ ok: true });
+    }
+    if (isOwner && m.chat.type === 'private' && !m.photo && channelFromLink(text) && /t\.me|telegram\.me|^@/i.test(text)) {
+      await command(db, m, `/channel ${text.trim()}`);
       return NextResponse.json({ ok: true });
     }
     // المحادثة الخاصة: للمالك فقط. الجروبات والقنوات التي أُضيف لها البوت: نجمع منها

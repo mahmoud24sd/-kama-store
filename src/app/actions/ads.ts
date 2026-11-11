@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { AD_TYPES } from '@/lib/adTypes';
-import { assertOwner } from '@/lib/auth';
+import { assertPermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
 export type AdState = { ok?: boolean; error?: string };
@@ -51,7 +51,7 @@ export async function submitAdRequest(_prev: AdState, formData: FormData): Promi
 }
 
 export async function toggleAdHandled(formData: FormData) {
-  const { supabase } = await assertOwner();
+  const { supabase } = await assertPermission('ads');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('ad_requests').update({ is_handled: formData.get('handled') === '1' }).eq('id', id.data);
@@ -59,7 +59,7 @@ export async function toggleAdHandled(formData: FormData) {
 }
 
 export async function deleteAdRequest(formData: FormData) {
-  const { supabase } = await assertOwner();
+  const { supabase } = await assertPermission('ads');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('ad_requests').delete().eq('id', id.data);

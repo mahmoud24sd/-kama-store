@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import ImportForm from '@/components/admin/ImportForm';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'استيراد منتجات' };
 
 export default async function ImportPage() {
-  await requireAdmin();
+  await requirePermission('products');
   return (
     <div className="max-w-2xl space-y-4">
       <div className="flex items-center justify-between">

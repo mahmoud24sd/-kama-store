@@ -86,7 +86,7 @@ const optionalUrl = z
   .refine((v) => v === '' || /^https:\/\/[^\s]+$/i.test(v), 'الرابط يجب أن يبدأ بـ https://');
 
 export async function saveContactSettings(formData: FormData) {
-  const { supabase } = await assertOwner();
+  const { supabase } = await assertPermission('settings');
   const parsed = z
     .object({
       phone: z.string().trim().max(40),
@@ -116,7 +116,7 @@ export async function saveContactSettings(formData: FormData) {
 }
 
 export async function savePublishSettings(formData: FormData) {
-  const { supabase } = await assertOwner();
+  const { supabase } = await assertPermission('settings');
   const parsed = z
     .object({
       instapay: z.string().trim().max(400),

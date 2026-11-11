@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import TelegramImport from '@/components/admin/TelegramImport';
-import { requireOwner } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 
 
 export const metadata: Metadata = { title: 'استيراد من تليجرام' };
 
 export default async function TelegramImportPage() {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requirePermission('telegram_import');
   const { data } = await supabase.from('categories').select('name').order('name');
   const categories = (data ?? []).map((c) => c.name as string);
   return (

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import type { Order } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { ORDER_STATUS_COLOR, ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, ui } from '@/lib/ui';
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'الطلبات' };
 const STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as const;
 
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; error?: string }> }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requirePermission('orders');
   const sp = await searchParams;
 
   let query = supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);

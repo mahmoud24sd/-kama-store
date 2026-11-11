@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { updateStock } from '@/app/actions/admin';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import type { Product } from '@/lib/types';
 import { ui } from '@/lib/ui';
 
@@ -18,7 +18,7 @@ function StockForm({ kind, id, stock }: { kind: 'product' | 'variant'; id: strin
 }
 
 export default async function AdminInventory({ searchParams }: { searchParams: Promise<{ saved?: string; low?: string }> }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requirePermission('inventory');
   const sp = await searchParams;
   const { data } = await supabase
     .from('products')

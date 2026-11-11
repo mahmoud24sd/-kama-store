@@ -55,7 +55,7 @@ function storagePathFromUrl(url: string): string | null {
 }
 
 export async function saveProduct(formData: FormData) {
-  const { supabase, profile } = await assertAdmin();
+  const { supabase, profile } = await assertPermission('products');
   const id = String(formData.get('id') ?? '');
   const back = id ? `/admin/products/${id}` : '/admin/products/new';
 
@@ -193,7 +193,7 @@ export async function saveProduct(formData: FormData) {
 }
 
 export async function deleteProduct(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('products');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
 
@@ -249,7 +249,7 @@ export async function deleteCategory(formData: FormData) {
 /* ───────────────────────── المخزون ───────────────────────── */
 
 export async function updateStock(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('inventory');
   const parsed = z
     .object({
       kind: z.enum(['product', 'variant']),
@@ -267,7 +267,7 @@ export async function updateStock(formData: FormData) {
 /* ───────────────────────── العروض ───────────────────────── */
 
 export async function saveOffer(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('offers');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
 
@@ -294,7 +294,7 @@ export async function saveOffer(formData: FormData) {
 /* ───────────────────────── الطلبات ───────────────────────── */
 
 export async function updateOrderStatus(formData: FormData) {
-  const { supabase, profile } = await assertAdmin();
+  const { supabase, profile } = await assertPermission('orders');
   const parsed = z
     .object({
       id: z.string().uuid(),
@@ -386,7 +386,7 @@ export async function deleteCoupon(formData: FormData) {
 /* ───────────────────────── التقييمات ───────────────────────── */
 
 export async function setReviewApproved(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('reviews');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('reviews').update({ is_approved: formData.get('approved') === 'true' }).eq('id', id.data);
@@ -394,7 +394,7 @@ export async function setReviewApproved(formData: FormData) {
 }
 
 export async function deleteReview(formData: FormData) {
-  const { supabase } = await assertAdmin();
+  const { supabase } = await assertPermission('reviews');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('reviews').delete().eq('id', id.data);

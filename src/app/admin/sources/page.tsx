@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { addSource, deleteSource, runSourceNow, toggleSource } from '@/app/actions/sources';
-import { requireOwner } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { formatDate } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
@@ -13,7 +13,7 @@ type Src = {
 };
 
 export default async function AdminSources({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requirePermission('sources');
   const sp = await searchParams;
   const [{ data, error }, { data: cats }] = await Promise.all([
     supabase.from('product_sources').select('*').order('created_at', { ascending: false }),

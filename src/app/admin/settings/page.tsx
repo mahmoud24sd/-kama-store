@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { saveContactSettings, savePublishSettings } from '@/app/actions/team';
-import { requireOwner } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { createAdminClient, hasServiceRole, serviceKeyInfo, serviceKeyPresent } from '@/lib/supabase/admin';
 import { getContactSettings, getPublishSettings } from '@/lib/settings';
 import { getBotInfo } from '@/lib/telegramBot';
@@ -9,7 +9,7 @@ import { ui } from '@/lib/ui';
 export const metadata: Metadata = { title: 'إعدادات التواصل' };
 
 export default async function AdminSettings({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
-  await requireOwner();
+  const { profile } = await requirePermission('settings');
   const sp = await searchParams;
   const c = await getContactSettings();
   const pub = await getPublishSettings();
@@ -113,6 +113,8 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
         <button className={ui.btnDark}>حفظ إعدادات النشر</button>
       </form>
 
+      {profile.role === 'owner' && (
+        <>
       <h2 className="mt-8 text-lg font-bold">نسخة احتياطية (تصدير)</h2>
       <p className="mb-2 text-sm text-gray-600">حمّل ملفات CSV تفتح في إكسل. يُفضّل تحميلها كل أسبوع وحفظها عندك.</p>
       <div className="flex flex-wrap gap-2">
@@ -120,6 +122,8 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
           <a key={k} href={`/admin/backup/${k}`} className={ui.btnOutline}>تحميل {l}</a>
         ))}
       </div>
+        </>
+      )}
     </div>
   );
 }

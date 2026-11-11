@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { saveOffer } from '@/app/actions/admin';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import type { Product } from '@/lib/types';
 import { discountPercent, formatPrice } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -15,7 +15,7 @@ function toLocalInput(iso: string | null): string {
 }
 
 export default async function AdminOffers({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requirePermission('offers');
   const sp = await searchParams;
   const { data } = await supabase
     .from('products')

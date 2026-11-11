@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ProductForm from '@/components/admin/ProductForm';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { getCategories } from '@/lib/queries';
 import type { Product, ProductPrivate } from '@/lib/types';
 import { ui } from '@/lib/ui';
@@ -17,7 +17,7 @@ export default async function EditProduct({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; saved?: string }>;
 }) {
-  const [{ id }, sp, { supabase }, categories] = await Promise.all([params, searchParams, requireAdmin(), getCategories()]);
+  const [{ id }, sp, { supabase }, categories] = await Promise.all([params, searchParams, requirePermission('products'), getCategories()]);
   if (!UUID.test(id)) notFound();
 
   const { data } = await supabase

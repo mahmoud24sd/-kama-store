@@ -43,14 +43,14 @@ export async function requireAdmin() {
 /** للصفحات التي تحتاج صلاحية محددة. بدونها يُعاد التوجيه لصفحة الطلبات */
 export async function requirePermission(perm: Permission) {
   const ctx = await requireAdmin();
-  if (!hasPermission(ctx.profile, perm)) redirect('/admin/orders');
+  if (!hasPermission(ctx.profile, perm)) redirect('/admin/no-access');
   return ctx;
 }
 
 /** صفحات المالك فقط */
 export async function requireOwner() {
   const ctx = await requireAdmin();
-  if (ctx.profile.role !== 'owner') redirect('/admin');
+  if (ctx.profile.role !== 'owner') redirect('/admin/no-access');
   return ctx;
 }
 

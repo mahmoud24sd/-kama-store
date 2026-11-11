@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { deleteProduct } from '@/app/actions/admin';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import type { Product } from '@/lib/types';
 import { formatPrice, totalStock } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -10,7 +10,7 @@ import { ui } from '@/lib/ui';
 export const metadata: Metadata = { title: 'المنتجات' };
 
 export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ q?: string; error?: string }> }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requirePermission('products');
   const sp = await searchParams;
 
   let query = supabase

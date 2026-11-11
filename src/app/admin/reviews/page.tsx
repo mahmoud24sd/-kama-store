@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { deleteReview, setReviewApproved } from '@/app/actions/admin';
 import Stars from '@/components/product/Stars';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import type { Review } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: 'التقييمات' };
 type Row = Review & { products: { name: string } | null };
 
 export default async function AdminReviews() {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requirePermission('reviews');
   const { data } = await supabase.from('reviews').select('*, products(name)').order('created_at', { ascending: false }).limit(200);
   const reviews = (data ?? []) as unknown as Row[];
 

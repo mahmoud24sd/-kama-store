@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { updateOrderStatus } from '@/app/actions/admin';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import OrderTimeline from '@/components/orders/OrderTimeline';
 import type { Order, OrderEvent } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
@@ -21,7 +21,7 @@ export default async function AdminOrderDetail({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
-  const [{ id }, sp, { supabase }] = await Promise.all([params, searchParams, requireAdmin()]);
+  const [{ id }, sp, { supabase }] = await Promise.all([params, searchParams, requirePermission('orders')]);
   if (!UUID.test(id)) notFound();
 
   const { data } = await supabase.from('orders').select('*, order_items(*)').eq('id', id).maybeSingle();

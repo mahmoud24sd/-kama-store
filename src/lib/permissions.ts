@@ -11,6 +11,16 @@ export const PERMISSIONS = [
   { key: 'temp_password', label: 'باسورد مؤقت' },
   { key: 'delete_user', label: 'حذف المستخدم' },
   { key: 'publishing', label: 'تأكيد دفع نشر المنتجات (10 ج)' },
+  { key: 'orders', label: 'الطلبات' },
+  { key: 'products', label: 'المنتجات (إضافة وتعديل واستيراد)' },
+  { key: 'inventory', label: 'المخزون' },
+  { key: 'offers', label: 'العروض' },
+  { key: 'reviews', label: 'التقييمات' },
+  { key: 'ads', label: 'طلبات الإعلانات' },
+  { key: 'telegram_bot', label: 'بوت تليجرام (الوصول)' },
+  { key: 'telegram_import', label: 'استيراد من تليجرام' },
+  { key: 'sources', label: 'ربط المتاجر' },
+  { key: 'settings', label: 'إعدادات التواصل' },
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number]['key'];

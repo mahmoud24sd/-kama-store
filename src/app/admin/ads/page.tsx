@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { deleteAdRequest, toggleAdHandled } from '@/app/actions/ads';
-import { requireOwner } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { formatDate } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'طلبات الإعلانات' };
 type AdRequest = { ad_type?: string | null; ad_price?: number | null; id: string; name: string; phone: string; email: string | null; message: string | null; is_handled: boolean; created_at: string };
 
 export default async function AdminAds() {
-  const { supabase } = await requireOwner();
+  const { supabase } = await requirePermission('ads');
   const { data, error } = await supabase.from('ad_requests').select('*').order('created_at', { ascending: false }).limit(200);
   const items = (data ?? []) as AdRequest[];
 

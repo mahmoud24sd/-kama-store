@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { addBotAdmin, connectBot, removeBotAdmin, saveBotSettings } from '@/app/actions/telegramSettings';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { getBotInfo } from '@/lib/telegramBot';
 import { claimCode } from '@/lib/telegramClaim';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 type Webhook = { url?: string; last_error_message?: string; pending_update_count?: number };
 
 export default async function TelegramBotPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
-  const { profile, supabase } = await requireAdmin();
+  const { profile, supabase } = await requirePermission('telegram_bot');
   const sp = await searchParams;
   const bot = await getBotInfo();
   const isOwner = profile.role === 'owner';

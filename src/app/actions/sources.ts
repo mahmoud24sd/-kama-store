@@ -3,14 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { assertOwner } from '@/lib/auth';
+import { assertPermission } from '@/lib/auth';
 import { runSource, type Source } from '@/lib/importer';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 
 const back = (q: string): never => redirect(`/admin/sources?${q}`);
 
 export async function addSource(formData: FormData) {
-  await assertOwner();
+  await assertPermission('sources');
   if (formData.get('consent') !== 'on') back('error=' + encodeURIComponent('أكّد أن عندك إذن من صاحب المتجر لاستخدام منتجاته'));
   const parsed = z
     .object({
@@ -44,7 +44,7 @@ export async function addSource(formData: FormData) {
   }
   if (!kind) return back('error=' + encodeURIComponent('المتجر ده مش Shopify ولا WooCommerce (أو قافل قائمة منتجاته)، فمقدرش أسحب منه. جرّب متجر تاني.'));
 
-  const supabase = (await assertOwner()).supabase;
+  const supabase = (await assertPermission('sources')).supabase;
   const { error } = await supabase.from('product_sources').insert({
     name: d.name,
     kind,
@@ -60,7 +60,7 @@ export async function addSource(formData: FormData) {
 }
 
 export async function toggleSource(formData: FormData) {
-  const { supabase } = await assertOwner();
+  const { supabase } = await assertPermission('sources');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('product_sources').update({ is_active: formData.get('active') === '1' }).eq('id', id.data);
@@ -68,7 +68,7 @@ export async function toggleSource(formData: FormData) {
 }
 
 export async function deleteSource(formData: FormData) {
-  const { supabase } = await assertOwner();
+  const { supabase } = await assertPermission('sources');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   // حذف المصدر لا يحذف المنتجات التي سُحبت منه
@@ -77,7 +77,7 @@ export async function deleteSource(formData: FormData) {
 }
 
 export async function runSourceNow(formData: FormData) {
-  const { supabase } = await assertOwner();
+  const { supabase } = await assertPermission('sources');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   if (!hasServiceRole) return back('error=' + encodeURIComponent('يلزم SUPABASE_SERVICE_ROLE_KEY في Vercel'));

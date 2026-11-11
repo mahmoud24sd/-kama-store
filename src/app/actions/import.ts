@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { assertAdmin } from '@/lib/auth';
+import { assertPermission } from '@/lib/auth';
 import { parseCsv } from '@/lib/csv';
 import { slugify } from '@/lib/utils';
 
@@ -39,7 +39,7 @@ function num(v: string | undefined): number | null {
 }
 
 export async function importProducts(_prev: ImportState, formData: FormData): Promise<ImportState> {
-  const { supabase, profile } = await assertAdmin();
+  const { supabase, profile } = await assertPermission('products');
 
   // إما نص ملصوق من Excel / Google Sheets، أو ملف CSV
   const pasted = String(formData.get('text') ?? '').trim();

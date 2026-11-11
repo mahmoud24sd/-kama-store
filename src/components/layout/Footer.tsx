@@ -4,7 +4,6 @@ import Logo from './Logo';
 import { TikTokIcon } from './SocialIcons';
 import { getContactSettings, whatsappLink } from '@/lib/settings';
 import { getVisitCount } from '@/lib/visits';
-import AdRequestForm from './AdRequestForm';
 import VisitCounter from './VisitCounter';
 
 export default async function Footer() {
@@ -103,10 +102,14 @@ export default async function Footer() {
             <div>
               <h3 className="mb-2 text-lg font-bold text-white">أعلن معنا</h3>
               <p className="leading-7 text-gray-400">
-                تريد أن يصل إعلانك إلى زوار Kama Store؟ اترك بياناتك وسنتواصل معك لتحديد المساحة والسعر المناسبين.
+                تريد أن يصل إعلانك إلى زوار Kama Store؟ اضغط الزر وسجّل بياناتك ونوع الإعلان والسعر، وسنتواصل معك.
               </p>
             </div>
-            <AdRequestForm />
+            <div className="flex items-center md:justify-end">
+              <Link href="/advertise" className="inline-block rounded-lg bg-accent-400 px-6 py-3 text-center text-sm font-bold text-gray-900 hover:bg-accent-500">
+                اضغط هنا للإعلان
+              </Link>
+            </div>
           </div>
         </section>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-white/10 py-4 text-center text-xs text-gray-400">

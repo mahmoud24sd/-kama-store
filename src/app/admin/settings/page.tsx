@@ -3,6 +3,7 @@ import { saveContactSettings, savePublishSettings } from '@/app/actions/team';
 import { requireOwner } from '@/lib/auth';
 import { createAdminClient, hasServiceRole, serviceKeyInfo, serviceKeyPresent } from '@/lib/supabase/admin';
 import { getContactSettings, getPublishSettings } from '@/lib/settings';
+import { getBotInfo } from '@/lib/telegramBot';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'إعدادات التواصل' };
@@ -12,6 +13,7 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const c = await getContactSettings();
   const pub = await getPublishSettings();
+  const bot = await getBotInfo();
 
   // فحص المفتاح السري الذي يعتمد عليه التسجيل بدون بريد ونشر المنتجات
   let keyState: 'missing' | 'badformat' | 'rejected' | 'ok' = 'missing';
@@ -33,6 +35,19 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
   return (
     <div className="max-w-xl space-y-4">
       <h1 className="text-xl font-extrabold">إعدادات التواصل</h1>
+
+      <section className="space-y-2 rounded-xl border border-gray-200 p-4">
+        <h2 className="font-bold">بوت تليجرام</h2>
+        {bot ? (
+          <p className="text-sm">
+            البوت شغّال:{' '}
+            <a href={`https://t.me/${bot.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline" dir="ltr">@{bot.username}</a>
+            {' '}· <a href="/admin/telegram" className="font-semibold text-brand-600 underline">الأوامر والتفاصيل</a>
+          </p>
+        ) : (
+          <p className="text-sm text-amber-700">البوت لسه مش مضبوط. ضيف TELEGRAM_BOT_TOKEN في Vercel (من BotFather) ثم Redeploy. <a href="/admin/telegram" className="underline">التفاصيل</a></p>
+        )}
+      </section>
       <p className="text-sm text-gray-600">تظهر هذه البيانات في أسفل كل صفحات الموقع وفي صفحة «تواصل معنا». اترك الخانة فارغة لإخفائها.</p>
       {sp.saved && <p className={ui.alertOk}>تم الحفظ.</p>}
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}

@@ -6,7 +6,7 @@ import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'طلبات الإعلانات' };
 
-type AdRequest = { id: string; name: string; phone: string; email: string | null; message: string | null; is_handled: boolean; created_at: string };
+type AdRequest = { ad_type?: string | null; ad_price?: number | null; id: string; name: string; phone: string; email: string | null; message: string | null; is_handled: boolean; created_at: string };
 
 export default async function AdminAds() {
   const { supabase } = await requireOwner();
@@ -27,6 +27,8 @@ export default async function AdminAds() {
                 <p className="font-bold">{a.name} {a.is_handled && <span className="text-xs font-normal text-green-700">✓ تم التواصل</span>}</p>
                 <p><a href={`tel:${a.phone}`} dir="ltr" className="font-semibold text-brand-600">{a.phone}</a></p>
                 {a.email && <p><a href={`mailto:${a.email}`} dir="ltr" className="text-brand-600">{a.email}</a></p>}
+                {a.ad_type && <p className="font-semibold">النوع: {a.ad_type}</p>}
+                {a.ad_price != null && <p className="font-semibold text-green-700">السعر المعروض: {a.ad_price} ج.م</p>}
                 {a.message && <p className="whitespace-pre-line text-gray-700">{a.message}</p>}
                 <p className="text-xs text-gray-500">{formatDate(a.created_at)}</p>
               </div>

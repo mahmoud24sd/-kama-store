@@ -26,6 +26,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/earnings', label: 'الأرباح والسحب', icon: Wallet, perm: 'withdraw' },
   { href: '/admin/users', label: 'المستخدمون', icon: UserCog, owner: true },
   { href: '/admin/team', label: 'الفريق والصلاحيات', icon: ShieldCheck, owner: true },
+  { href: '/admin/telegram', label: 'بوت تليجرام', icon: Link2 },
   { href: '/admin/telegram-import', label: 'استيراد تليجرام', icon: Link2, owner: true },
   { href: '/admin/sources', label: 'ربط المتاجر', icon: Link2, owner: true },
   { href: '/admin/ads', label: 'طلبات الإعلانات', icon: Megaphone, owner: true },

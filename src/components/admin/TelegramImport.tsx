@@ -13,7 +13,7 @@ const HEADER = 'name,price,compare_at_price,stock,category,brand,shop_name,descr
 const flat = (t: TgText | undefined) => (Array.isArray(t) ? t.map((p) => (typeof p === 'string' ? p : p.text ?? '')).join('') : t ?? '');
 const ts = (m: TgMessage) => (m.date_unixtime ? Number(m.date_unixtime) * 1000 : m.date ? new Date(m.date).getTime() : 0);
 
-export default function TelegramImport() {
+export default function TelegramImport({ categories }: { categories: string[] }) {
   const [files, setFiles] = useState<File[]>([]);
   const [days, setDays] = useState(30);
   const [fixed, setFixed] = useState(50);
@@ -162,7 +162,13 @@ export default function TelegramImport() {
         <div><label className={ui.label} htmlFor="days">آخر كم يوم</label><input id="days" type="number" min={1} max={365} value={days} onChange={(e) => setDays(Number(e.target.value) || 30)} className={ui.input} /></div>
         <div><label className={ui.label} htmlFor="fixed">زيادة ثابتة على كل منتج (جنيه)</label><input id="fixed" type="number" min={0} value={fixed} onChange={(e) => setFixed(Number(e.target.value) || 0)} className={ui.input} /></div>
         <div><label className={ui.label} htmlFor="percent">زيادة نسبة % (اختياري)</label><input id="percent" type="number" min={0} max={1000} value={percent} onChange={(e) => setPercent(Number(e.target.value) || 0)} className={ui.input} /></div>
-        <div><label className={ui.label} htmlFor="cat">القسم (نفس اسمه في موقعك)</label><input id="cat" value={category} onChange={(e) => setCategory(e.target.value)} className={ui.input} /></div>
+        <div>
+          <label className={ui.label} htmlFor="cat">القسم اللي المنتجات هتنزل فيه</label>
+          <select id="cat" value={category} onChange={(e) => setCategory(e.target.value)} className={ui.input}>
+            <option value="">بدون قسم</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
         <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} /> انشر المنتجات مباشرة عند الاستيراد (وإلا تدخل مخفية لحد ما تراجعها)</label>
         <p className="text-xs text-gray-500 sm:col-span-2">سعر البيع = (السعر الأصلي × (1 + النسبة)) + الزيادة الثابتة. السعر الأصلي والمصدر يتحفظوا كـ «سعر التكلفة» و«ملاحظات خاصة» (للمالك والأدمن فقط).</p>
         <div className="flex gap-2 sm:col-span-2">

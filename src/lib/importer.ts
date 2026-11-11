@@ -58,7 +58,13 @@ async function getJson(url: string): Promise<unknown> {
 async function fetchPage(src: Source, page: number): Promise<Item[]> {
   const base = src.base_url.replace(/\/+$/, '');
   if (src.kind === 'shopify') {
-    const data = (await getJson(`${base}/products.json?limit=${PAGE_SIZE}&page=${page}`)) as { products?: Record<string, unknown>[] };
+    // الأكثر مبيعًا أولًا؛ لو المتجر لا يدعم الترتيب نرجع للقائمة العادية
+    let data: { products?: Record<string, unknown>[] };
+    try {
+      data = (await getJson(`${base}/collections/all/products.json?limit=${PAGE_SIZE}&page=${page}&sort_by=best-selling`)) as { products?: Record<string, unknown>[] };
+    } catch {
+      data = (await getJson(`${base}/products.json?limit=${PAGE_SIZE}&page=${page}`)) as { products?: Record<string, unknown>[] };
+    }
     return (data.products ?? []).flatMap((p) => {
       const variants = (p.variants as Record<string, unknown>[] | undefined) ?? [];
       const v = variants.find((x) => x.available) ?? variants[0];
@@ -77,7 +83,12 @@ async function fetchPage(src: Source, page: number): Promise<Item[]> {
       }];
     });
   }
-  const data = (await getJson(`${base}/wp-json/wc/store/v1/products?per_page=${PAGE_SIZE}&page=${page}`)) as Record<string, unknown>[];
+  let data: Record<string, unknown>[];
+  try {
+    data = (await getJson(`${base}/wp-json/wc/store/v1/products?per_page=${PAGE_SIZE}&page=${page}&orderby=popularity&order=desc`)) as Record<string, unknown>[];
+  } catch {
+    data = (await getJson(`${base}/wp-json/wc/store/v1/products?per_page=${PAGE_SIZE}&page=${page}`)) as Record<string, unknown>[];
+  }
   return (Array.isArray(data) ? data : []).flatMap((p) => {
     const prices = (p.prices as Record<string, string> | undefined) ?? {};
     const minor = Number(prices.currency_minor_unit ?? 2);

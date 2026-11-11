@@ -73,7 +73,7 @@ async function savePhoto(db: Db, fileId: string): Promise<string | null> {
 const sourceOf = (m: TgMsg) =>
   m.forward_origin?.chat?.title || m.forward_from_chat?.title || m.forward_origin?.sender_user?.first_name || m.forward_origin?.sender_user_name || m.chat.title || 'تليجرام';
 
-type Job = { channel: string; cutoff: number; before?: number; chat: number; collected: number; done?: boolean };
+type Job = { channel: string; cutoff: number; before?: number; chat: number; collected: number; by: number };
 
 async function uploadFromUrl(db: Db, url: string): Promise<string | null> {
   try {
@@ -94,8 +94,8 @@ async function uploadFromUrl(db: Db, url: string): Promise<string | null> {
 const channelChatId = (channel: string) => -(parseInt(createHash('sha1').update(channel.toLowerCase()).digest('hex').slice(0, 11), 16) + 1000000);
 
 /** يعالج قناة عامة صفحة بصفحة حتى ينتهي وقت التنفيذ أو نصل لتاريخ البداية. يُستأنف بـ /continue */
-async function runJob(db: Db) {
-  const raw = await getState(db, 'job', '');
+async function runJob(db: Db, by: number) {
+  const raw = await getState(db, `job:${by}`, '');
   if (!raw) return;
   const job = JSON.parse(raw) as Job;
   const started = Date.now();
@@ -104,7 +104,7 @@ async function runJob(db: Db) {
     const { posts, ok } = await fetchChannelPage(job.channel, job.before);
     if (!ok) {
       await say(job.chat, 'ما قدرتش أفتح القناة. تأكد إنها عامة وإن الرابط صحيح.');
-      await db.from('telegram_state').delete().eq('key', 'job');
+      await db.from('telegram_state').delete().eq('key', `job:${by}`);
       return;
     }
     if (posts.length === 0) { finished = true; break; }
@@ -117,8 +117,8 @@ async function runJob(db: Db) {
       const urls = (await Promise.all(g.photos.slice(0, 4).map((u) => uploadFromUrl(db, u)))).filter((u): u is string => Boolean(u));
       if (urls.length === 0) continue;
       const { error } = await db.from('telegram_items').upsert(
-        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url },
-        { onConflict: 'chat_id,message_id', ignoreDuplicates: true },
+        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url, added_by: by },
+        { onConflict: 'chat_id,message_id,added_by', ignoreDuplicates: true },
       );
       if (!error) job.collected += 1;
     }
@@ -126,15 +126,15 @@ async function runJob(db: Db) {
     job.before = minId;
   }
   if (finished) {
-    await db.from('telegram_state').delete().eq('key', 'job');
+    await db.from('telegram_state').delete().eq('key', `job:${by}`);
     await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (فيه اسم وسعر وصورة).\nاكتب /export عشان تاخد ملف إكسل.`);
   } else {
-    await setState(db, 'job', JSON.stringify(job));
+    await setState(db, `job:${by}`, JSON.stringify(job));
     await say(job.chat, `لسه شغّال على @${job.channel}: اتحفظ ${job.collected} لحد دلوقتي. اكتب /continue عشان يكمل.`);
   }
 }
 
-async function collect(db: Db, m: TgMsg) {
+async function collect(db: Db, m: TgMsg, by: number) {
   const caption = m.caption ?? m.text ?? '';
   const largest = m.photo && m.photo.length > 0 ? m.photo[m.photo.length - 1] : null;
   const parsed = parseCaption(caption);
@@ -143,7 +143,7 @@ async function collect(db: Db, m: TgMsg) {
   const url = largest ? await savePhoto(db, largest.file_id) : null;
 
   const append = async () => {
-    const { data: ex } = await db.from('telegram_items').select('id,name,price,description,images').eq('chat_id', m.chat.id).eq('media_group_id', m.media_group_id as string).maybeSingle();
+    const { data: ex } = await db.from('telegram_items').select('id,name,price,description,images').eq('chat_id', m.chat.id).eq('added_by', by).eq('media_group_id', m.media_group_id as string).maybeSingle();
     if (!ex) return false;
     const images = [...((ex.images as string[]) ?? []), ...(url ? [url] : [])].slice(0, 6);
     const patch: Record<string, unknown> = { images };
@@ -165,6 +165,7 @@ async function collect(db: Db, m: TgMsg) {
     description: parsed.description || null,
     price: parsed.price,
     images: url ? [url] : [],
+    added_by: by,
   });
   // ألبوم وصلت صورته في نفس اللحظة من رسالة أخرى: ندمجها مع العنصر الموجود
   if (error && m.media_group_id) await append();
@@ -194,24 +195,22 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
   const cmd = cmdRaw.split('@')[0].toLowerCase();
   const arg = rest.join(' ').trim();
   const chat = m.chat.id;
+  const by = m.from?.id ?? 0;
 
   if (cmd === '/start' || cmd === '/help') {
     return say(
       chat,
       [
         `معرّفك: ${m.from?.id}`,
-        'ابعت لي (أو حوّل لي) رسائل فيها صورة وسعر، وأنا أحفظها.',
+        'ابعت لي رابط قناة عامة (مثلًا https://t.me/اسم_القناة) وأنا أسحب منتجاتها وأجهّز لك ملف إكسل.',
+        'الزيادة على الأسعار والقسم بيحددهم المالك من الموقع.',
         '',
-        '/channel https://t.me/اسم_القناة 30  ← اسحب منتجات آخر 30 يوم من قناة عامة',
+        '/channel https://t.me/اسم_القناة 30  ← آخر 30 يوم',
         '/continue  ← كمّل السحب لو وقف',
-        '/add 50  ← زيادة 50 جنيه على كل منتج',
-        '/markup 20  ← زيادة نسبة 20% (اختياري)',
-        '/category أزياء  ← القسم في الملف',
-        '/publish on|off  ← هل المنتجات تتنشر مباشرة عند الاستيراد',
         '/count  ← كم منتج محفوظ',
-        ...(isOwner ? ['/addadmin 123456789  ← ضيف أدمن (رقم تليجرام)', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن'] : []),
         '/export  ← ملف إكسل بالجديد فقط',
-        '/exportall  ← ملف بكل المنتجات',
+        '/exportall  ← ملف بكل منتجاتك',
+        ...(isOwner ? ['', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
       ].join('\n'),
     );
   }
@@ -230,53 +229,36 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     await setState(db, 'admins', JSON.stringify(admins.filter((a) => a !== id)));
     return say(chat, `تم حذف ${id} من الأدمن.`);
   }
-  if (cmd === '/add') {
-    const n = Number(arg);
-    if (!Number.isFinite(n) || n < 0 || n > 100000) return say(chat, 'اكتب رقم، مثلًا: /add 50');
-    await setState(db, 'fixed', String(n));
-    return say(chat, `تم. هيتزاد ${n} جنيه على كل منتج في الملف.`);
+  if (cmd === '/add' || cmd === '/markup' || cmd === '/category' || cmd === '/publish') {
+    return say(chat, 'الزيادة والقسم والنشر بيحددهم المالك من الموقع (لوحة التحكم ← بوت تليجرام).');
   }
   if (cmd === '/channel') {
     const link = rest[0] ?? '';
     const channel = channelFromLink(link);
     if (!channel) return say(chat, 'ابعت رابط قناة عامة، مثلًا:\n/channel https://t.me/اسم_القناة 30\n(الجروبات والقنوات الخاصة مش بتتسحب بالطريقة دي. استخدم صفحة التصدير في الموقع.)');
     const days = Math.min(Math.max(Number(rest[1]) || 30, 1), 365);
-    const job: Job = { channel, cutoff: Date.now() - days * 86400000, chat, collected: 0 };
-    await setState(db, 'job', JSON.stringify(job));
+    const job: Job = { channel, cutoff: Date.now() - days * 86400000, chat, collected: 0, by };
+    await setState(db, `job:${by}`, JSON.stringify(job));
     await say(chat, `تمام، بسحب منتجات @${channel} لآخر ${days} يوم. هبعتلك رسالة لما أخلّص. (استخدم منتجات عندك إذن منها)`);
-    after(() => runJob(db));
+    after(() => runJob(db, by));
     return;
   }
   if (cmd === '/continue') {
-    if (!(await getState(db, 'job', ''))) return say(chat, 'مفيش سحب شغّال دلوقتي.');
+    if (!(await getState(db, `job:${by}`, ''))) return say(chat, 'مفيش سحب شغّال دلوقتي.');
     await say(chat, 'بكمّل...');
-    after(() => runJob(db));
+    after(() => runJob(db, by));
     return;
-  }
-  if (cmd === '/markup') {
-    const n = Number(arg.replace('%', ''));
-    if (!Number.isFinite(n) || n < -90 || n > 1000) return say(chat, 'اكتب رقم، مثلًا: /markup 20');
-    await setState(db, 'markup', String(n));
-    return say(chat, `تم. هيتزاد ${n}% على كل الأسعار في الملف.`);
-  }
-  if (cmd === '/category') {
-    await setState(db, 'category', arg.slice(0, 80));
-    return say(chat, arg ? `القسم في الملف: ${arg} (لازم يكون نفس اسم القسم في موقعك)` : 'تم مسح القسم.');
-  }
-  if (cmd === '/publish') {
-    await setState(db, 'publish', arg === 'on' ? 'yes' : 'no');
-    return say(chat, arg === 'on' ? 'المنتجات هتتنشر مباشرة عند الاستيراد.' : 'المنتجات هتدخل مخفية لحد ما تراجعها.');
   }
   if (cmd === '/count') {
     const [{ count: fresh }, { count: all }] = await Promise.all([
-      db.from('telegram_items').select('id', { count: 'exact', head: true }).is('exported_at', null),
-      db.from('telegram_items').select('id', { count: 'exact', head: true }),
+      db.from('telegram_items').select('id', { count: 'exact', head: true }).eq('added_by', by).is('exported_at', null),
+      db.from('telegram_items').select('id', { count: 'exact', head: true }).eq('added_by', by),
     ]);
-    return say(chat, `جديد (لم يُصدَّر): ${fresh ?? 0}\nالإجمالي: ${all ?? 0}\nنسبة الزيادة: ${await getState(db, 'markup', '0')}%`);
+    return say(chat, `جديد (لم يُصدَّر): ${fresh ?? 0}\nالإجمالي: ${all ?? 0}\nالزيادة: ${await getState(db, 'fixed', '0')} جنيه + ${await getState(db, 'markup', '0')}%`);
   }
   if (cmd === '/export' || cmd === '/exportall') {
     const all = cmd === '/exportall';
-    let q = db.from('telegram_items').select('*').order('created_at', { ascending: true }).limit(2000);
+    let q = db.from('telegram_items').select('*').eq('added_by', by).order('created_at', { ascending: true }).limit(2000);
     if (!all) q = q.is('exported_at', null);
     const { data } = await q;
     const items = data ?? [];
@@ -348,7 +330,7 @@ export async function POST(req: Request) {
     if (m.chat.type === 'private' && !isStaff) return NextResponse.json({ ok: true });
     // جروب/قناة: نجمع فقط من المسموح بها
     if (m.chat.type !== 'private' && !(await getChats(db)).includes(String(m.chat.id))) return NextResponse.json({ ok: true });
-    await collect(db, m);
+    await collect(db, m, m.chat.type === 'private' ? (m.from?.id ?? 0) : Number(OWNER() || 0));
   } catch (e) {
     console.error('[telegram] error', e instanceof Error ? e.message : e);
   }

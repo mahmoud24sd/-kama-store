@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import ProductGallery from '@/components/product/ProductGallery';
 import PurchasePanel from '@/components/product/PurchasePanel';
 import { affiliateHref } from '@/lib/affiliate';
+import { ui } from '@/lib/ui';
 import ProductGrid from '@/components/product/ProductGrid';
 import ReviewForm from '@/components/product/ReviewForm';
 import Stars from '@/components/product/Stars';

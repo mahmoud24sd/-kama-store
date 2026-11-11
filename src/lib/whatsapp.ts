@@ -16,6 +16,15 @@ export function buildResetMessage(name: string | null, code: string, siteUrl: st
   ].join('\n');
 }
 
+export function buildOrderMessage(name: string, orderNumber: string, statusLabel: string, siteUrl: string, note?: string | null): string {
+  return [
+    `مرحبًا ${name} 👋`,
+    `طلبك رقم ${orderNumber} في Kama Store أصبحت حالته: *${statusLabel}*.`,
+    note ? `ملاحظة: ${note}` : '',
+    `تابع طلبك من هنا: ${siteUrl}/account/orders`,
+  ].filter(Boolean).join('\n');
+}
+
 /** رابط يفتح واتساب برسالة جاهزة، يكفي أن يضغط الأدمن «إرسال» */
 export const waLink = (phone: string, text: string) => `https://wa.me/${waDigits(phone)}?text=${encodeURIComponent(text)}`;
 

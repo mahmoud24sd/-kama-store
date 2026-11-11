@@ -7,6 +7,8 @@ import OrderTimeline from '@/components/orders/OrderTimeline';
 import type { Order, OrderEvent } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, ui } from '@/lib/ui';
+import { getSiteUrl } from '@/lib/site';
+import { buildOrderMessage, waLink } from '@/lib/whatsapp';
 
 export const metadata: Metadata = { title: 'تفاصيل الطلب' };
 
@@ -70,6 +72,14 @@ export default async function AdminOrderDetail({
             <p className="text-xs text-gray-500">عند اختيار «ملغي» يُعاد المخزون تلقائيًا. عند ضغط المندوب على «تم التسليم» اختر الحالة «تم التسليم» واحفظ.</p>
             <button className={ui.btnDark}>حفظ</button>
           </form>
+          <a
+            href={waLink(order.ship_phone, buildOrderMessage(order.ship_name, order.order_number, ORDER_STATUS_LABEL[order.status] ?? order.status, getSiteUrl(), events[events.length - 1]?.note))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${ui.btnOutline} mt-3 inline-block`}
+          >
+            أبلغ العميل بالحالة على واتساب
+          </a>
         </section>
       </div>
 

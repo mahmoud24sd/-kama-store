@@ -97,6 +97,14 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
         </div>
         <button className={ui.btnDark}>حفظ إعدادات النشر</button>
       </form>
+
+      <h2 className="mt-8 text-lg font-bold">نسخة احتياطية (تصدير)</h2>
+      <p className="mb-2 text-sm text-gray-600">حمّل ملفات CSV تفتح في إكسل. يُفضّل تحميلها كل أسبوع وحفظها عندك.</p>
+      <div className="flex flex-wrap gap-2">
+        {[['orders', 'الطلبات'], ['products', 'المنتجات'], ['customers', 'العملاء'], ['withdrawals', 'السحوبات']].map(([k, l]) => (
+          <a key={k} href={`/admin/backup/${k}`} className={ui.btnOutline}>تحميل {l}</a>
+        ))}
+      </div>
     </div>
   );
 }

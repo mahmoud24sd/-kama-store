@@ -56,7 +56,11 @@ export default function ProductCard({ product, isFavorite = false }: { product: 
         {stock > 0 && stock <= 5 && <span className="text-xs font-semibold text-red-600">متبقي {stock} فقط</span>}
 
         <div className="pt-1">
-          {hasVariants && stock > 0 ? (
+          {product.affiliate_url ? (
+            <a href={product.affiliate_url} target="_blank" rel="sponsored nofollow noopener noreferrer" className={`${ui.btnPrimary} w-full`}>
+              اشترِ من أمازون
+            </a>
+          ) : hasVariants && stock > 0 ? (
             <Link href={href} className={`${ui.btnOutline} w-full`}>
               اختر الخيارات
             </Link>

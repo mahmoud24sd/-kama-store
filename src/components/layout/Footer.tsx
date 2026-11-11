@@ -111,6 +111,7 @@ export default async function Footer() {
         </section>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-white/10 py-4 text-center text-xs text-gray-400">
           <span>© {new Date().getFullYear()} Kama Store. جميع الحقوق محفوظة.</span>
+          <span className="text-xs text-gray-500">كمشارك في برنامج أمازون للتسويق بالعمولة، نحصل على عمولة من المشتريات المؤهلة.</span>
           <VisitCounter initial={visits} />
         </div>
       </div>

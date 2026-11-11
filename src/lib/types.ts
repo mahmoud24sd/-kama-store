@@ -29,6 +29,7 @@ export type Product = {
   details?: string | null;
   brand: string | null;
   shop_name?: string | null;
+  affiliate_url?: string | null;
   seller_id?: string | null;
   status?: 'draft' | 'pending' | 'published' | 'rejected';
   price: number;

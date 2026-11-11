@@ -76,17 +76,30 @@ export default async function ProductPage({ params }: Props) {
             </div>
           )}
 
-          <PurchasePanel
-            productId={product.id}
-            basePrice={product.price}
-            baseStock={baseStock}
-            variants={product.product_variants ?? []}
-            isFavorite={favorites.has(product.id)}
-          />
+          {product.affiliate_url ? (
+            <div className="space-y-2">
+              <a href={product.affiliate_url} target="_blank" rel="sponsored nofollow noopener noreferrer" className={`${ui.btnPrimary} w-full py-3 text-base`}>
+                اشترِ من أمازون
+              </a>
+              <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                الشراء والدفع والشحن يتمّون على أمازون. السعر المعروض إرشادي وقد يختلف على أمازون وقت الشراء. كمشارك في برنامج أمازون للتسويق بالعمولة، قد نحصل على عمولة من المشتريات المؤهلة دون أي تكلفة إضافية عليك.
+              </p>
+            </div>
+          ) : (
+            <>
+              <PurchasePanel
+                productId={product.id}
+                basePrice={product.price}
+                baseStock={baseStock}
+                variants={product.product_variants ?? []}
+                isFavorite={favorites.has(product.id)}
+              />
 
-          <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-            شحن مجاني للطلبات فوق 1000 ج.م · الدفع عند الاستلام متاح
-          </p>
+              <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+                شحن مجاني للطلبات فوق 1000 ج.م · الدفع عند الاستلام متاح
+              </p>
+            </>
+          )}
         </div>
       </div>
 

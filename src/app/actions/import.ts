@@ -26,6 +26,8 @@ const ALIASES: Record<string, string[]> = {
   private_notes: ['private_notes', 'ملاحظات خاصة', 'تفاصيل خاصة'],
   image_urls: ['image_urls', 'images', 'روابط الصور', 'الصور'],
   publish: ['publish', 'نشر', 'ظاهر'],
+  affiliate_url: ['affiliate_url', 'رابط أمازون', 'رابط الأفيليت', 'amazon_url'],
+  asin: ['asin', 'external_id'],
 };
 
 const YES = ['yes', 'y', 'true', '1', 'نعم', 'ايوه', 'أيوه', 'نشر', 'ظاهر'];
@@ -105,6 +107,21 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     }
     if (images.length > 6) return void errors.push(`سطر ${line} (${name}): الحد الأقصى 6 صور`);
 
+    // منتج أفيليت: رابط أمازون (https). الشراء يتم على أمازون ولا يدخل سلة الموقع
+    const affRaw = get(r, 'affiliate_url') ?? '';
+    let affiliate: string | null = null;
+    if (affRaw) {
+      try {
+        const u = new URL(affRaw);
+        const okHost = /(^|\.)amazon\.[a-z.]+$/i.test(u.hostname) || /(^|\.)amzn\.(to|eu|asia)$/i.test(u.hostname) || u.hostname === 'a.co';
+        if (u.protocol !== 'https:' || !okHost) throw new Error();
+        affiliate = u.toString();
+      } catch {
+        return void errors.push(`سطر ${line} (${name}): رابط أمازون غير صالح (يجب أن يكون https من amazon أو amzn.to)`);
+      }
+    }
+    const asin = (get(r, 'asin') ?? '').toUpperCase().slice(0, 20);
+
     const publish = YES.includes((get(r, 'publish') ?? '').toLowerCase());
     const shop = get(r, 'shop_name');
     // التفاصيل العامة: كل خاصية في سطر، أو افصل بينها بالعلامة |
@@ -127,6 +144,7 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
         compare_at_price: compare,
         stock: stock ?? 0,
         is_active: publish,
+        ...(affiliate ? { affiliate_url: affiliate, affiliate_source: 'amazon', stock: 0, ...(asin ? { external_id: asin } : {}) } : {}),
       },
     });
   });

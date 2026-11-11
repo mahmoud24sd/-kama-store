@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ProductGallery from '@/components/product/ProductGallery';
 import PurchasePanel from '@/components/product/PurchasePanel';
+import { affiliateHref } from '@/lib/affiliate';
 import ProductGrid from '@/components/product/ProductGrid';
 import ReviewForm from '@/components/product/ReviewForm';
 import Stars from '@/components/product/Stars';
@@ -78,7 +79,7 @@ export default async function ProductPage({ params }: Props) {
 
           {product.affiliate_url ? (
             <div className="space-y-2">
-              <a href={product.affiliate_url} target="_blank" rel="sponsored nofollow noopener noreferrer" className={`${ui.btnPrimary} w-full py-3 text-base`}>
+              <a href={affiliateHref(product.affiliate_url)} target="_blank" rel="sponsored nofollow noopener noreferrer" className={`${ui.btnPrimary} w-full py-3 text-base`}>
                 اشترِ من أمازون
               </a>
               <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">

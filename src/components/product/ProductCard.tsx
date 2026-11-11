@@ -4,6 +4,7 @@ import { ImageOff } from 'lucide-react';
 import Stars from './Stars';
 import FavoriteButton from './FavoriteButton';
 import QuickAdd from './QuickAdd';
+import { affiliateHref } from '@/lib/affiliate';
 import type { Product } from '@/lib/types';
 import { discountPercent, firstImage, formatPrice, totalStock } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -57,7 +58,7 @@ export default function ProductCard({ product, isFavorite = false }: { product: 
 
         <div className="pt-1">
           {product.affiliate_url ? (
-            <a href={product.affiliate_url} target="_blank" rel="sponsored nofollow noopener noreferrer" className={`${ui.btnPrimary} w-full`}>
+            <a href={affiliateHref(product.affiliate_url)} target="_blank" rel="sponsored nofollow noopener noreferrer" className={`${ui.btnPrimary} w-full`}>
               اشترِ من أمازون
             </a>
           ) : hasVariants && stock > 0 ? (

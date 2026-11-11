@@ -10,6 +10,8 @@ import { ui } from '@/lib/ui';
 export const metadata: Metadata = { title: 'بوت تليجرام' };
 export const dynamic = 'force-dynamic';
 
+type Webhook = { url?: string; last_error_message?: string; pending_update_count?: number };
+
 export default async function TelegramBotPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const { profile, supabase } = await requireAdmin();
   const sp = await searchParams;
@@ -20,11 +22,11 @@ export default async function TelegramBotPage({ searchParams }: { searchParams: 
   const st: Record<string, string> = {};
   let admins: string[] = [];
   let cats: string[] = [];
-  let webhook: { url?: string; last_error_message?: string; pending_update_count?: number } | null = null;
+  let webhook: Webhook | null = null;
   if (isOwner && bot) {
     try {
       const res = await fetch(`https://api.telegram.org/bot${(process.env.TELEGRAM_BOT_TOKEN ?? '').trim()}/getWebhookInfo`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
-      webhook = ((await res.json()) as { result?: typeof webhook }).result ?? null;
+      webhook = ((await res.json()) as { result?: Webhook }).result ?? null;
     } catch {
       webhook = null;
     }

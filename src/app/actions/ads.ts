@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { AD_TYPES } from '@/lib/adTypes';
 import { assertOwner } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
 export type AdState = { ok?: boolean; error?: string };
 
-export const AD_TYPES = ['بانر في الصفحة الرئيسية', 'إعلان على منتج أو قسم', 'منشور على صفحاتنا (فيسبوك / إنستجرام / تيك توك)', 'رعاية قسم كامل', 'أخرى'] as const;
 
 /** طلب إعلان من أي زائر (محمي بحقل مخفي ضد الروبوتات وحدود الأطوال) */
 export async function submitAdRequest(_prev: AdState, formData: FormData): Promise<AdState> {

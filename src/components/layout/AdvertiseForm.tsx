@@ -1,7 +1,8 @@
 'use client';
 
 import { useActionState } from 'react';
-import { AD_TYPES, submitAdRequest, type AdState } from '@/app/actions/ads';
+import { submitAdRequest, type AdState } from '@/app/actions/ads';
+import { AD_TYPES } from '@/lib/adTypes';
 import { ui } from '@/lib/ui';
 
 export default function AdvertiseForm() {

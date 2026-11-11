@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { addBotAdmin, removeBotAdmin, saveBotSettings } from '@/app/actions/telegramSettings';
+import { addBotAdmin, connectBot, removeBotAdmin, saveBotSettings } from '@/app/actions/telegramSettings';
 import { requireAdmin } from '@/lib/auth';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { getBotInfo } from '@/lib/telegramBot';
+import { claimCode } from '@/lib/telegramClaim';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'بوت تليجرام' };
@@ -19,9 +20,18 @@ export default async function TelegramBotPage({ searchParams }: { searchParams: 
   const st: Record<string, string> = {};
   let admins: string[] = [];
   let cats: string[] = [];
+  let webhook: { url?: string; last_error_message?: string; pending_update_count?: number } | null = null;
+  if (isOwner && bot) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${(process.env.TELEGRAM_BOT_TOKEN ?? '').trim()}/getWebhookInfo`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
+      webhook = ((await res.json()) as { result?: typeof webhook }).result ?? null;
+    } catch {
+      webhook = null;
+    }
+  }
   if (isOwner && hasServiceRole) {
     try {
-      const { data } = await createAdminClient().from('telegram_state').select('key,value').in('key', ['fixed', 'markup', 'category', 'publish', 'admins']);
+      const { data } = await createAdminClient().from('telegram_state').select('key,value').in('key', ['fixed', 'markup', 'category', 'publish', 'admins', 'owner']);
       for (const r of data ?? []) st[r.key as string] = r.value as string;
       admins = (JSON.parse(st.admins ?? '[]') as unknown[]).map(String);
     } catch {
@@ -61,6 +71,34 @@ export default async function TelegramBotPage({ searchParams }: { searchParams: 
         </ol>
         <p className="text-gray-600">كل أدمن يشوف منتجاته هو بس.</p>
       </section>
+
+      {isOwner && (
+        <section className="space-y-3 rounded-xl border border-gray-200 p-4">
+          <h2 className="font-bold">ربط البوت بالموقع</h2>
+          {bot ? (
+            <>
+              <p className="text-sm">
+                الحالة: {webhook?.url ? <span className="font-semibold text-green-700">متربط ✓</span> : <span className="font-semibold text-red-600">غير متربط</span>}
+                {webhook?.last_error_message ? <span className="block text-xs text-amber-700">آخر خطأ من تليجرام: {webhook.last_error_message}</span> : null}
+              </p>
+              <form action={connectBot}><button className={ui.btnPrimary}>{webhook?.url ? 'إعادة الربط' : 'اربط البوت الآن'}</button></form>
+            </>
+          ) : (
+            <p className="text-sm text-amber-700">ضيف TELEGRAM_BOT_TOKEN و TELEGRAM_WEBHOOK_SECRET في Vercel واعمل Redeploy، وبعدها ارجع هنا واضغط «اربط البوت الآن».</p>
+          )}
+          <div className="border-t pt-3 text-sm">
+            {st.owner || (process.env.TELEGRAM_OWNER_ID ?? '').trim() ? (
+              <p>مالك البوت مربوط ✓ (رقم تليجرام: <span dir="ltr">{(process.env.TELEGRAM_OWNER_ID ?? '').trim() || st.owner}</span>)</p>
+            ) : claimCode() ? (
+              <p>
+                عشان تبقى مالك البوت: افتح البوت واكتب <b dir="ltr">/claim {claimCode()}</b>
+              </p>
+            ) : (
+              <p className="text-amber-700">ضيف TELEGRAM_WEBHOOK_SECRET في Vercel عشان يظهر كود ربط المالك.</p>
+            )}
+          </div>
+        </section>
+      )}
 
       {isOwner && (
         <>

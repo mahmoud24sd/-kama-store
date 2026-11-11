@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { assertOwner } from '@/lib/auth';
+import { getSiteUrl } from '@/lib/site';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 
 const back = (q: string): never => redirect(`/admin/telegram?${q}`);
@@ -64,6 +65,29 @@ export async function removeBotAdmin(formData: FormData) {
   const db = createAdminClient();
   const admins = await readAdmins(db);
   await db.from('telegram_state').upsert({ key: 'admins', value: JSON.stringify(admins.filter((a) => a !== id)) });
+  revalidatePath('/admin/telegram');
+  back('saved=1');
+}
+
+/** يربط البوت بالموقع (setWebhook) بدل فتح رابط يدويًا. المالك فقط */
+export async function connectBot() {
+  await assertOwner();
+  const token = (process.env.TELEGRAM_BOT_TOKEN ?? '').trim();
+  const secret = (process.env.TELEGRAM_WEBHOOK_SECRET ?? '').trim();
+  if (!token) return err('TELEGRAM_BOT_TOKEN غير مضاف في Vercel (أو لم تعمل Redeploy بعد إضافته)');
+  if (secret.length < 16) return err('TELEGRAM_WEBHOOK_SECRET غير مضاف أو قصير جدًا (لازم 16 حرف على الأقل)');
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: `${getSiteUrl()}/api/telegram`, secret_token: secret, allowed_updates: ['message', 'channel_post', 'my_chat_member'], drop_pending_updates: true }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const j = (await res.json()) as { ok?: boolean; description?: string };
+    if (!j.ok) return err(`رفض تليجرام الربط: ${j.description ?? 'سبب غير معروف'} (غالبًا التوكن غلط)`);
+  } catch {
+    return err('تعذّر الوصول لتليجرام الآن. حاول مرة أخرى.');
+  }
   revalidatePath('/admin/telegram');
   back('saved=1');
 }

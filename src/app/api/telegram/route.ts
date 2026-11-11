@@ -2,13 +2,16 @@ import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { after, NextResponse } from 'next/server';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { csvRow, parseCaption, withMarkup } from '@/lib/telegramParse';
+import { claimMatches } from '@/lib/telegramClaim';
 import { channelFromLink, fetchChannelPage, groupPosts } from '@/lib/tmeScrape';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const TOKEN = () => (process.env.TELEGRAM_BOT_TOKEN ?? '').trim();
-const OWNER = () => (process.env.TELEGRAM_OWNER_ID ?? '').trim();
+// رقم المالك: من متغير TELEGRAM_OWNER_ID أو من الربط بالكود (/claim). يُحدَّث في بداية كل طلب
+let ownerNow = (process.env.TELEGRAM_OWNER_ID ?? '').trim();
+const OWNER = () => ownerNow;
 const BUCKET = 'product-images';
 const HEADER = 'name,price,compare_at_price,stock,category,brand,shop_name,description,details,image_urls,publish,cost_price,supplier,private_notes,affiliate_url,asin';
 
@@ -291,6 +294,7 @@ export async function POST(req: Request) {
   try {
     const update = (await req.json()) as { message?: TgMsg; channel_post?: TgMsg; my_chat_member?: { chat: TgMsg['chat']; from: { id: number }; new_chat_member?: { status?: string } } };
     const db = createAdminClient();
+    ownerNow = (process.env.TELEGRAM_OWNER_ID ?? '').trim() || (await getState(db, 'owner', ''));
 
     // إضافة البوت لجروب/قناة: نقبلها فقط لو من أضافه هو المالك أو أدمن البوت، وإلا يغادر فورًا
     if (update.my_chat_member) {
@@ -310,6 +314,18 @@ export async function POST(req: Request) {
     const isStaff = isOwner || (m.from?.id !== undefined && (await getAdmins(db)).includes(String(m.from.id)));
     const text = m.text ?? '';
 
+    // ربط المالك بالكود الظاهر في لوحة التحكم (مرة واحدة، ولا يعمل لو فيه مالك بالفعل)
+    const claim = text.match(/^\/claim(?:@\w+)?\s+(\d{8})\s*$/i);
+    if (claim && m.chat.type === 'private' && m.from?.id) {
+      if (!ownerNow && claimMatches(claim[1])) {
+        await setState(db, 'owner', String(m.from.id));
+        await say(m.chat.id, 'تم. إنت دلوقتي مالك البوت. اكتب /start.');
+      } else {
+        await say(m.chat.id, 'الكود غير صحيح، أو في مالك مربوط بالفعل.');
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // داخل جروب: أدمن البوت يكتب /allow لتفعيل الجمع من الجروب (للجروبات اللي أُضيف لها البوت قبل هذا التحديث)
     if (m.chat.type !== 'private' && isStaff && /^\/allow(@\w+)?$/i.test(text.trim())) {
       await setState(db, 'chats', JSON.stringify([...new Set([...(await getChats(db)), String(m.chat.id)])]));
@@ -318,7 +334,7 @@ export async function POST(req: Request) {
     }
 
     if (text.startsWith('/')) {
-      if (text.toLowerCase().startsWith('/start') && !isStaff) await say(m.chat.id, `معرّفك: ${m.from?.id}\nابعته للمالك عشان يضيفك أدمن.${OWNER() ? '' : '\n(لو إنت المالك: ضيفه في TELEGRAM_OWNER_ID في Vercel.)'}`);
+      if (text.toLowerCase().startsWith('/start') && !isStaff) await say(m.chat.id, `معرّفك: ${m.from?.id}\nابعته للمالك عشان يضيفك أدمن.${OWNER() ? '' : '\n(لو إنت المالك: افتح لوحة التحكم ← بوت تليجرام وخد كود الربط، واكتب هنا /claim ثم الكود.)'}`);
       else if (isStaff && m.chat.type === 'private') await command(db, m, text, isOwner);
       return NextResponse.json({ ok: true });
     }

@@ -15,7 +15,7 @@ export async function addSource(formData: FormData) {
   const parsed = z
     .object({
       name: z.string().trim().min(2).max(80),
-      kind: z.enum(['shopify', 'woocommerce']),
+      kind: z.enum(['auto', 'shopify', 'woocommerce']).default('auto'),
       base_url: z.string().trim().url().max(300),
       category_id: z.string().uuid().optional().or(z.literal('')),
       markup_percent: z.coerce.number().min(-90).max(1000),
@@ -28,10 +28,26 @@ export async function addSource(formData: FormData) {
   const u = new URL(d.base_url);
   if (u.protocol !== 'https:') return back('error=' + encodeURIComponent('الرابط لازم يبدأ بـ https://'));
 
+  // اكتشاف نوع المتجر تلقائيًا من الرابط
+  let kind: 'shopify' | 'woocommerce' | null = d.kind === 'auto' ? null : d.kind;
+  if (!kind) {
+    const probe = async (path: string, check: (j: unknown) => boolean) => {
+      try {
+        const r = await fetch(`${u.origin}${path}`, { headers: { Accept: 'application/json', 'User-Agent': 'KamaStoreImporter/1.0' }, signal: AbortSignal.timeout(10000), cache: 'no-store' });
+        return r.ok && check(await r.json());
+      } catch {
+        return false;
+      }
+    };
+    if (await probe('/products.json?limit=1', (j) => Array.isArray((j as { products?: unknown }).products))) kind = 'shopify';
+    else if (await probe('/wp-json/wc/store/v1/products?per_page=1', (j) => Array.isArray(j))) kind = 'woocommerce';
+  }
+  if (!kind) return back('error=' + encodeURIComponent('المتجر ده مش Shopify ولا WooCommerce (أو قافل قائمة منتجاته)، فمقدرش أسحب منه. جرّب متجر تاني.'));
+
   const supabase = (await assertOwner()).supabase;
   const { error } = await supabase.from('product_sources').insert({
     name: d.name,
-    kind: d.kind,
+    kind,
     base_url: u.origin,
     category_id: d.category_id || null,
     markup_percent: d.markup_percent,

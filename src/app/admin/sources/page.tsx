@@ -37,7 +37,7 @@ export default async function AdminSources({ searchParams }: { searchParams: Pro
           <div><label className={ui.label} htmlFor="name">اسم للمتجر</label><input id="name" name="name" required className={ui.input} /></div>
           <div>
             <label className={ui.label} htmlFor="kind">نوع المتجر</label>
-            <select id="kind" name="kind" className={ui.input}><option value="shopify">Shopify</option><option value="woocommerce">WooCommerce (ووردبريس)</option></select>
+            <select id="kind" name="kind" className={ui.input}><option value="auto">اكتشاف تلقائي (الأفضل)</option><option value="shopify">Shopify</option><option value="woocommerce">WooCommerce (ووردبريس)</option></select>
           </div>
           <div className="sm:col-span-2"><label className={ui.label} htmlFor="base_url">رابط المتجر</label><input id="base_url" name="base_url" type="url" required dir="ltr" placeholder="https://store.example.com" className={ui.input} /></div>
           <div>

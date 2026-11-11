@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BarChart3, Boxes, KeyRound, Layers, Megaphone, MessageCircle, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
+import { BarChart3, Boxes, KeyRound, Link2, Layers, Megaphone, MessageCircle, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
 import { requireAdmin } from '@/lib/auth';
 import ChatAlert from '@/components/chat/ChatAlert';
 import AutoRefresh from '@/components/chat/AutoRefresh';
@@ -26,6 +26,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/earnings', label: 'الأرباح والسحب', icon: Wallet, perm: 'withdraw' },
   { href: '/admin/users', label: 'المستخدمون', icon: UserCog, owner: true },
   { href: '/admin/team', label: 'الفريق والصلاحيات', icon: ShieldCheck, owner: true },
+  { href: '/admin/sources', label: 'ربط المتاجر', icon: Link2, owner: true },
   { href: '/admin/ads', label: 'طلبات الإعلانات', icon: Megaphone, owner: true },
   { href: '/admin/settings', label: 'إعدادات التواصل', icon: Settings, owner: true },
 ];

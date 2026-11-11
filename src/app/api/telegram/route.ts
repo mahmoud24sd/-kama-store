@@ -170,6 +170,16 @@ async function collect(db: Db, m: TgMsg) {
   if (error && m.media_group_id) await append();
 }
 
+/** الجروبات والقنوات المسموح بالجمع منها (يضيفها المالك أو أدمن البوت فقط) */
+async function getChats(db: Db): Promise<string[]> {
+  try {
+    const v = JSON.parse(await getState(db, 'chats', '[]')) as unknown;
+    return Array.isArray(v) ? v.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 async function getAdmins(db: Db): Promise<string[]> {
   try {
     const v = JSON.parse(await getState(db, 'admins', '[]')) as unknown;
@@ -297,13 +307,33 @@ export async function POST(req: Request) {
   if (!TOKEN() || !hasServiceRole) return NextResponse.json({ ok: true });
 
   try {
-    const update = (await req.json()) as { message?: TgMsg; channel_post?: TgMsg };
+    const update = (await req.json()) as { message?: TgMsg; channel_post?: TgMsg; my_chat_member?: { chat: TgMsg['chat']; from: { id: number }; new_chat_member?: { status?: string } } };
+    const db = createAdminClient();
+
+    // إضافة البوت لجروب/قناة: نقبلها فقط لو من أضافه هو المالك أو أدمن البوت، وإلا يغادر فورًا
+    if (update.my_chat_member) {
+      const mc = update.my_chat_member;
+      if (mc.chat.type !== 'private' && ['member', 'administrator'].includes(mc.new_chat_member?.status ?? '')) {
+        const byOwner = OWNER() !== '' && String(mc.from.id) === OWNER();
+        const staff = byOwner || (await getAdmins(db)).includes(String(mc.from.id));
+        if (staff) await setState(db, 'chats', JSON.stringify([...new Set([...(await getChats(db)), String(mc.chat.id)])]));
+        else await tg('leaveChat', { chat_id: mc.chat.id });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     const m = update.message ?? update.channel_post;
     if (!m) return NextResponse.json({ ok: true });
-    const db = createAdminClient();
     const isOwner = String(m.from?.id ?? '') === OWNER() && OWNER() !== '';
     const isStaff = isOwner || (m.from?.id !== undefined && (await getAdmins(db)).includes(String(m.from.id)));
     const text = m.text ?? '';
+
+    // داخل جروب: أدمن البوت يكتب /allow لتفعيل الجمع من الجروب (للجروبات اللي أُضيف لها البوت قبل هذا التحديث)
+    if (m.chat.type !== 'private' && isStaff && /^\/allow(@\w+)?$/i.test(text.trim())) {
+      await setState(db, 'chats', JSON.stringify([...new Set([...(await getChats(db)), String(m.chat.id)])]));
+      await say(m.chat.id, 'تم. هجمع الصور والأسعار من هنا.');
+      return NextResponse.json({ ok: true });
+    }
 
     if (text.startsWith('/')) {
       if (text.toLowerCase().startsWith('/start') && !isStaff) await say(m.chat.id, `معرّفك: ${m.from?.id}\nابعته للمالك عشان يضيفك أدمن.${OWNER() ? '' : '\n(لو إنت المالك: ضيفه في TELEGRAM_OWNER_ID في Vercel.)'}`);
@@ -316,6 +346,8 @@ export async function POST(req: Request) {
     }
     // المحادثة الخاصة: للمالك فقط. الجروبات والقنوات التي أُضيف لها البوت: نجمع منها
     if (m.chat.type === 'private' && !isStaff) return NextResponse.json({ ok: true });
+    // جروب/قناة: نجمع فقط من المسموح بها
+    if (m.chat.type !== 'private' && !(await getChats(db)).includes(String(m.chat.id))) return NextResponse.json({ ok: true });
     await collect(db, m);
   } catch (e) {
     console.error('[telegram] error', e instanceof Error ? e.message : e);

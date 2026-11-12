@@ -6,6 +6,7 @@ import { claimMatches } from '@/lib/telegramClaim';
 import { getSiteUrl } from '@/lib/site';
 import { slugify } from '@/lib/utils';
 import { writeXlsx } from '@/lib/xlsx';
+import { enqueueFile } from '@/lib/social';
 import { existingNames, hasTrashReason, normName } from '@/lib/dedupe';
 import { channelFromLink, fetchChannelPage, groupPosts } from '@/lib/tmeScrape';
 
@@ -431,6 +432,7 @@ export async function POST(req: Request) {
         else {
           await db.from('product_files').update({ is_public: true }).eq('id', a1);
           await db.from('products').update({ is_active: true, published_at: new Date().toISOString() }).eq('file_id', a1).is('deleted_at', null);
+          await enqueueFile(db, a1);
           await say(chatId, '✅ اتنشر الملف للعلن.');
         }
       }

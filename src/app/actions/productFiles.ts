@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { assertAdmin } from '@/lib/auth';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { enqueueFile, enqueueSocial } from '@/lib/social';
+import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 
 const BUCKET = 'product-images';
 const IDS = z.array(z.string().uuid()).max(1000);
@@ -50,6 +52,7 @@ async function setVisibility(formData: FormData, pub: boolean) {
     const now = new Date().toISOString();
     await supabase.from('products').update({ published_by: profile.id, published_at: now }).eq('file_id', id.data).is('deleted_at', null);
   }
+  if (pub && hasServiceRole) await enqueueFile(createAdminClient(), id.data);
   return back(where(formData), pub ? 'الملف ظاهر للعلن دلوقتي' : 'الملف رجع مسودة (مخفي)');
 }
 
@@ -111,6 +114,7 @@ async function runBulk(formData: FormData, op: string) {
   const now = new Date().toISOString();
   if (op === 'publish') {
     await supabase.from('products').update({ is_active: true, published_by: profile.id, published_at: now }).in('id', ids.data).is('deleted_at', null);
+    if (hasServiceRole) await enqueueSocial(createAdminClient(), ids.data);
     return back(to, `${ids.data.length} منتج ظاهر للعلن`);
   }
   if (op === 'draft') {

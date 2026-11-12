@@ -17,6 +17,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/products', label: 'المنتجات', icon: Package, perm: 'products' },
   { href: '/admin/drafts', label: 'المسودات', icon: Package, perm: 'drafts' },
   { href: '/admin/published', label: 'المنشور للعلن', icon: Package, perm: 'published' },
+  { href: '/admin/social', label: 'النشر على السوشيال', icon: Megaphone, perm: 'social' },
   { href: '/admin/trash', label: 'المهملات', icon: Package, perm: 'trash' },
   { href: '/admin/categories', label: 'الأقسام', icon: Layers, perm: 'categories' },
   { href: '/admin/inventory', label: 'المخزون', icon: Boxes, perm: 'inventory' },

@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { assertPermission } from '@/lib/auth';
 import { existingNames, hasTrashReason, normName } from '@/lib/dedupe';
 import { readTable } from '@/lib/importFile';
+import { enqueueFile } from '@/lib/social';
+import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { slugify } from '@/lib/utils';
 
 export type ImportState = { created?: number; failed?: number; errors?: string[]; message?: string; fileId?: string; noImages?: number; duplicates?: number };
@@ -257,6 +259,7 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     created += data.filter((d) => !chunk.some((c) => c.row.slug === d.slug && dupLines.has(c.line))).length;
   }
 
+  if (fileId && mode === 'public' && hasServiceRole) await enqueueFile(createAdminClient(), fileId);
   revalidatePath('/', 'layout');
   return { created, failed: rows.length - 1 - created - dupLines.size, errors: errors.slice(0, 100), fileId: fileId ?? undefined, noImages, duplicates: dupLines.size };
 }

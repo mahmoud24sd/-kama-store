@@ -22,6 +22,7 @@ export const PERMISSIONS = [
   { key: 'sources', label: 'ربط المتاجر' },
   { key: 'settings', label: 'إعدادات التواصل' },
   { key: 'visits', label: 'عدد الزيارات' },
+  { key: 'social', label: 'النشر على فيسبوك وانستجرام' },
   { key: 'drafts', label: 'صفحة المسودات' },
   { key: 'published', label: 'صفحة المنشور للعلن' },
   { key: 'trash', label: 'صفحة المهملات (الحذف)' },

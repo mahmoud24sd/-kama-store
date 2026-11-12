@@ -22,9 +22,10 @@ const canTrashMove: Permission[] = ['products', 'drafts', 'published', 'files'];
 const canRestore: Permission[] = ['products', 'trash'];
 const canPurge: Permission[] = ['trash_purge'];
 
-function back(path: string, msg?: string): never {
+function back(path: string, msg?: string, folder?: string): never {
   revalidatePath('/', 'layout');
-  redirect(msg ? `${path}${path.includes('?') ? '&' : '?'}msg=${encodeURIComponent(msg)}` : path);
+  const qs = [msg ? `msg=${encodeURIComponent(msg)}` : '', folder ? `folder=${folder}` : ''].filter(Boolean).join('&');
+  redirect(`${path}${qs ? (path.includes('?') ? '&' : '?') + qs : ''}${folder ? `#f-${folder}` : ''}`);
 }
 const fileId = (fd: FormData) => z.string().uuid().safeParse(fd.get('id'));
 const where = (fd: FormData) => {
@@ -39,7 +40,7 @@ export async function saveFileMarkup(formData: FormData) {
   const markup = z.coerce.number().min(0).max(1_000_000).safeParse(formData.get('markup'));
   if (!id.success || !markup.success) return back(where(formData), 'الزيادة لازم تكون رقم صحيح من 0 لفوق');
   const { error } = await supabase.rpc('apply_file_markup', { p_file: id.data, p_markup: markup.data });
-  return back(where(formData), error ? 'تعذّر تعديل الزيادة. اتأكد إن ملف 020 اتشغّل.' : 'تم تعديل الزيادة على كل منتجات الملف');
+  return back(where(formData), error ? 'تعذّر تعديل الزيادة. اتأكد إن ملف 020 اتشغّل.' : 'تم تعديل الزيادة على كل منتجات الملف', id.data);
 }
 
 /** نشر الملف للعلن (كمجموعة ومنتجات) أو إرجاعه مسودة */
@@ -177,11 +178,11 @@ async function applyEdit(supabase: EditCtx, ids: string[], formData: FormData): 
     const chunk = ids.slice(i, i + 200);
     if (Object.keys(patch).length > 0) {
       const { error } = await supabase.from('products').update(patch).in('id', chunk);
-      if (error) return 'تعذّر التعديل';
+      if (error) return `تعذّر التعديل: ${error.message}`.slice(0, 200);
     }
     if (setP !== null || addP !== null) {
       const { error } = await supabase.rpc('bulk_edit_price', { p_ids: chunk, p_set: setP, p_add: addP });
-      if (error) return 'تعذّر تعديل السعر. اتأكد إن ملف 024 اتشغّل.';
+      if (error) return `تعذّر تعديل السعر (${error.message}). اتأكد إن ملف 024 اتشغّل.`.slice(0, 220);
     }
   }
   return `اتعدّل ${ids.length} منتج`;
@@ -204,8 +205,8 @@ export async function bulkEditFile(formData: FormData) {
   if (!id.success) return back(to);
   const { data } = await supabase.from('products').select('id').eq('file_id', id.data).is('deleted_at', null).limit(1000);
   const ids = (data ?? []).map((p) => p.id as string);
-  if (ids.length === 0) return back(to, 'الملف فاضي');
-  return back(to, await applyEdit(supabase, ids, formData));
+  if (ids.length === 0) return back(to, 'الملف فاضي', id.data);
+  return back(to, await applyEdit(supabase, ids, formData), id.data);
 }
 
 /** تفريغ المهملات بالكامل (حذف نهائي) */

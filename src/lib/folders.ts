@@ -2,7 +2,7 @@ import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import type { createClient } from '@/lib/supabase/server';
 
 type Sb = Awaited<ReturnType<typeof createClient>>;
-export type FolderProduct = { id: string; name: string; price: number; is_active: boolean; img?: string };
+export type FolderProduct = { id: string; name: string; price: number; is_active: boolean; img?: string; category?: string; brand?: string; shop?: string };
 export type Folder = { id: string; name: string; source: string; markup: number; is_public: boolean; created_at: string; by: string; products: FolderProduct[]; count: number };
 export type FolderKind = 'inbox' | 'draft' | 'public';
 
@@ -19,7 +19,7 @@ export async function loadFolders(supabase: Sb, kind: FolderKind) {
   if (files.length) {
     const { data } = await supabase
       .from('products')
-      .select('id,name,price,is_active,file_id,product_images(url,sort_order)')
+      .select('id,name,price,is_active,file_id,brand,shop_name,categories(name),product_images(url,sort_order)')
       .in('file_id', files.map((f) => f.id))
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -30,7 +30,7 @@ export async function loadFolders(supabase: Sb, kind: FolderKind) {
       const list = byFile.get(fid) ?? [];
       if (list.length < 60) {
         const imgs = [...((p.product_images as { url: string; sort_order: number }[]) ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-        list.push({ id: p.id as string, name: p.name as string, price: Number(p.price), is_active: Boolean(p.is_active), img: imgs[0]?.url });
+        list.push({ id: p.id as string, name: p.name as string, price: Number(p.price), is_active: Boolean(p.is_active), img: imgs[0]?.url, category: (p.categories as unknown as { name: string } | null)?.name, brand: (p.brand as string | null) ?? undefined, shop: (p.shop_name as string | null) ?? undefined });
         byFile.set(fid, list);
       }
     }

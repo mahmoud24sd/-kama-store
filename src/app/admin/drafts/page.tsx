@@ -11,7 +11,7 @@ import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'المسودات' };
 
-export default async function DraftsPage({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+export default async function DraftsPage({ searchParams }: { searchParams: Promise<{ msg?: string; folder?: string }> }) {
   const { supabase, profile } = await requirePermission('drafts');
   const sp = await searchParams;
   const { rows, missing, fileNames } = await loadList(supabase, false);
@@ -24,13 +24,13 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
     <div className="space-y-4">
       <h1 className="text-xl font-extrabold">📝 المسودات</h1>
       <p className="text-sm text-gray-600">منتجات وملفات لسه ما اتنشرتش (مخفية عن العملاء).</p>
-      {sp.msg && <p className={ui.alertOk}>{sp.msg}</p>}
+      {sp.msg && !sp.folder && <p className={ui.alertOk}>{sp.msg}</p>}
       {missing && <p className={ui.alertError}>شغّل ملف supabase/migrations/020_product_files.sql في Supabase.</p>}
       {folders.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-bold">📁 فولدرات ({folders.length})</h2>
           <div className="grid gap-3 lg:grid-cols-2">
-            {folders.map((f) => <FolderCard key={f.id} f={f} back="/admin/drafts" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft={false} canTrash={canTrash} />)}
+            {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/drafts" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft={false} canTrash={canTrash} />)}
           </div>
         </section>
       )}

@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: 'المنتجات' };
 
 type Row = Product & { file_id?: string | null; published_at?: string | null; deleted_at?: string | null };
 
-export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ q?: string; error?: string; msg?: string }> }) {
+export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ q?: string; error?: string; msg?: string; folder?: string }> }) {
   const { supabase, profile } = await requireAdmin();
   const canProducts = hasPermission(profile, 'products');
   const canBot = hasPermission(profile, 'bot_publish');
@@ -60,14 +60,14 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
         </div>
       </div>
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
-      {sp.msg && <p className={ui.alertOk}>{sp.msg}</p>}
+      {sp.msg && !sp.folder && <p className={ui.alertOk}>{sp.msg}</p>}
 
       {folders.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-extrabold">📁 الفولدرات المنشورة ({folders.length})</h2>
           <p className="text-xs text-gray-600">افتح الفولدر تشوف المنتجات، وعدّل القسم والعلامة والمحل والسعر لكلها مرة واحدة.</p>
           <div className="grid gap-3 lg:grid-cols-2">
-            {folders.map((f) => <FolderCard key={f.id} f={f} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} />)}
+            {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} />)}
           </div>
         </section>
       )}

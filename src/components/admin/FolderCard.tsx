@@ -7,7 +7,7 @@ import { ui } from '@/lib/ui';
 type Cat = { id: string; name: string };
 
 /** ملف = فولدر: عنوان (اسم، عدد، وقت الرفع، مين رفع)، أزرار، منتجاته جواه، وتعديل جماعي للقسم والسعر وغيره */
-export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraft, canTrash }: { f: Folder; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean }) {
+export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraft, canTrash, notice }: { f: Folder; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean; notice?: string }) {
   const hidden = (
     <>
       <input type="hidden" name="id" value={f.id} />
@@ -15,7 +15,8 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
     </>
   );
   return (
-    <div className={`${ui.card} space-y-2 p-3`}>
+    <div id={`f-${f.id}`} className={`${ui.card} space-y-2 p-3`}>
+      {notice && <p className={ui.alertOk}>{notice}</p>}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <Link href={`/admin/products/files/${f.id}`} className="font-extrabold text-brand-600 hover:underline">📁 {f.name}</Link>
@@ -34,7 +35,7 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
         </div>
       </div>
 
-      <details className="rounded-lg border border-gray-200">
+      <details open={Boolean(notice)} className="rounded-lg border border-gray-200">
         <summary className="cursor-pointer px-3 py-2 text-sm font-bold">📂 فتح الفولدر ({f.count} منتج)</summary>
         <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 lg:grid-cols-4">
           {f.products.map((p) => (
@@ -42,6 +43,7 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
               {p.img ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.img} alt="" loading="lazy" className="h-24 w-full rounded object-cover" /> : <div className="flex h-24 items-center justify-center rounded bg-gray-50 text-red-600">بدون صورة</div>}
               <p className="mt-1 line-clamp-2 font-semibold">{p.name}</p>
               <p className="text-gray-600">{formatPrice(p.price)}</p>
+              <p className="text-[11px] text-gray-500">{[p.category ? `🏷 ${p.category}` : '🏷 بدون قسم', p.brand, p.shop ? `🏬 ${p.shop}` : ''].filter(Boolean).join(' · ')}</p>
             </div>
           ))}
         </div>

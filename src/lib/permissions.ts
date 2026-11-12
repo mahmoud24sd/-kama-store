@@ -22,6 +22,7 @@ export const PERMISSIONS = [
   { key: 'sources', label: 'ربط المتاجر' },
   { key: 'settings', label: 'إعدادات التواصل' },
   { key: 'visits', label: 'عدد الزيارات' },
+  { key: 'published_count', label: 'عدد المنتجات المنشورة على الموقع' },
   { key: 'social', label: 'النشر على فيسبوك وانستجرام' },
   { key: 'files', label: 'صفحة الملفات (ملفات تليجرام الجديدة)' },
   { key: 'drafts_edit', label: 'تعديل جماعي للمسودات (قسم / سعر / ماركة / محل)' },

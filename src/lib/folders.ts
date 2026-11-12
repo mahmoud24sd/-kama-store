@@ -7,8 +7,8 @@ export type Folder = { id: string; name: string; source: string; markup: number;
 export type FolderKind = 'inbox' | 'draft' | 'public';
 
 /** الملفات كفولدرات: بمنتجاتها، ووقت الرفع، واسم اللي رفع (أدمن الموقع أو أدمن البوت) */
-export async function loadFolders(supabase: Sb, kind: FolderKind) {
-  const base = () => supabase.from('product_files').select('id,name,source,markup,is_public,created_at,created_by,tg_by').is('deleted_at', null).order('created_at', { ascending: false }).limit(100);
+export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size = 10) {
+  const base = () => supabase.from('product_files').select('id,name,source,markup,is_public,created_at,created_by,tg_by', { count: 'exact' }).is('deleted_at', null).order('created_at', { ascending: false }).range((page - 1) * size, page * size - 1);
   let res = await base().eq('stage', kind);
   const noStage = Boolean(res.error);
   if (noStage) res = kind === 'public' ? await base().eq('is_public', true) : kind === 'inbox' ? await base().eq('source', 'bot').eq('is_public', false) : await base().eq('is_public', false).neq('source', 'bot');
@@ -60,5 +60,5 @@ export async function loadFolders(supabase: Sb, kind: FolderKind) {
     products: byFile.get(f.id) ?? [],
     count: counts.get(f.id) ?? 0,
   }));
-  return { folders, legacy: noStage };
+  return { folders, legacy: noStage, total: res.count ?? folders.length };
 }

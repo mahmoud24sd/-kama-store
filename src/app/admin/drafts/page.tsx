@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { bulkEditDrafts, bulkPublish, bulkTrash } from '@/app/actions/productFiles';
 import { getCategories } from '@/lib/queries';
+import Pagination, { pageNum } from '@/components/admin/Pagination';
 import FolderCard from '@/components/admin/FolderCard';
 import { loadFolders } from '@/lib/folders';
 import ProductPick from '@/components/admin/ProductPick';
@@ -11,11 +12,11 @@ import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'المسودات' };
 
-export default async function DraftsPage({ searchParams }: { searchParams: Promise<{ msg?: string; folder?: string }> }) {
+export default async function DraftsPage({ searchParams }: { searchParams: Promise<{ msg?: string; folder?: string; fp?: string; pp?: string }> }) {
   const { supabase, profile } = await requirePermission('drafts');
   const sp = await searchParams;
-  const { rows, missing, fileNames } = await loadList(supabase, false);
-  const { folders } = await loadFolders(supabase, 'draft');
+  const { rows, total, missing, fileNames } = await loadList(supabase, false, pageNum(sp.pp));
+  const { folders, total: folderTotal } = await loadFolders(supabase, 'draft', pageNum(sp.fp));
   const cats = await getCategories();
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
   const canPublish = (['products', 'bot_publish', 'published'] as const).some((k) => hasPermission(profile, k));
@@ -32,9 +33,10 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
           <div className="grid gap-3 lg:grid-cols-2">
             {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/drafts" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft={false} canTrash={canTrash} />)}
           </div>
+          <Pagination total={folderTotal} page={pageNum(sp.fp)} param="fp" sp={sp} base="/admin/drafts" />
         </section>
       )}
-      <h2 className="font-bold">المنتجات ({rows.length})</h2>
+      <h2 className="font-bold">المنتجات ({total})</h2>
       <ProductPick
         rows={rows}
         back="/admin/drafts"
@@ -65,6 +67,7 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
         {canPublish && <button formAction={bulkPublish} className={ui.btnPrimary}>نشر للعلن</button>}
         {canTrash && <button formAction={bulkTrash} className={ui.btnDanger}>حذف (للمهملات)</button>}
       </ProductPick>
+      <Pagination total={total} page={pageNum(sp.pp)} param="pp" sp={sp} base="/admin/drafts" />
     </div>
   );
 }

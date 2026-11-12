@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { bulkRestore, bulkPurge, emptyTrash, purgeFile, restoreFile } from '@/app/actions/productFiles';
+import Pagination, { PAGE_SIZE, pageNum } from '@/components/admin/Pagination';
 import SelectAll from '@/components/admin/SelectAll';
 import { requirePermission } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
@@ -8,7 +9,7 @@ import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'المهملات' };
 
-export default async function TrashPage({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+export default async function TrashPage({ searchParams }: { searchParams: Promise<{ msg?: string; fp?: string; pp?: string }> }) {
   const { supabase, profile } = await requirePermission('trash');
   const canPurge = hasPermission(profile, 'trash_purge');
   const sp = await searchParams;
@@ -18,7 +19,11 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
   if (pr.error) pr = await pq('id,name,price,deleted_at,file_id');
   const prods = (pr.data ?? []) as unknown as { id: string; name: string; price: number; deleted_at: string; file_id: string | null; trash_reason?: string | null }[];
   const trashedFiles = new Set((files ?? []).map((f) => f.id as string));
-  const loose = prods.filter((p) => !p.file_id || !trashedFiles.has(p.file_id as string));
+  const looseAll = prods.filter((p) => !p.file_id || !trashedFiles.has(p.file_id as string));
+  const fp = pageNum(sp.fp);
+  const pp = pageNum(sp.pp);
+  const loose = looseAll.slice((pp - 1) * PAGE_SIZE, pp * PAGE_SIZE);
+  const filesPage = (files ?? []).slice((fp - 1) * PAGE_SIZE, fp * PAGE_SIZE);
   const inFile = new Map<string, number>();
   for (const p of prods ?? []) if (p.file_id) inFile.set(p.file_id as string, (inFile.get(p.file_id as string) ?? 0) + 1);
 
@@ -26,7 +31,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-extrabold">🗑 المهملات</h1>
-        {canPurge && (files?.length || loose.length) ? (
+        {canPurge && (files?.length || looseAll.length) ? (
           <form action={emptyTrash}><button className={ui.btnDanger}>تفريغ المهملات نهائيًا</button></form>
         ) : null}
       </div>
@@ -37,7 +42,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
       {(files ?? []).length > 0 && (
         <section className="space-y-2">
           <h2 className="font-bold">ملفات محذوفة</h2>
-          {(files ?? []).map((f) => (
+          {filesPage.map((f) => (
             <div key={f.id as string} className={`${ui.card} flex flex-wrap items-center justify-between gap-2 p-3`}>
               <div>
                 <p className="font-bold">📄 {f.name as string}</p>
@@ -49,6 +54,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
               </div>
             </div>
           ))}
+          <Pagination total={(files ?? []).length} page={fp} param="fp" sp={sp} base="/admin/trash" />
         </section>
       )}
 
@@ -75,9 +81,10 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
               ))}
             </tbody>
           </table>
+          <Pagination total={looseAll.length} page={pp} param="pp" sp={sp} base="/admin/trash" />
         </form>
       )}
-      {!error && (files ?? []).length === 0 && loose.length === 0 && <p className="py-8 text-center text-gray-500">المهملات فاضية.</p>}
+      {!error && (files ?? []).length === 0 && looseAll.length === 0 && <p className="py-8 text-center text-gray-500">المهملات فاضية.</p>}
     </div>
   );
 }

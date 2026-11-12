@@ -44,6 +44,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // حماية على السيرفر: غير الموظف يُعاد توجيهه (إضافة إلى middleware و RLS)
   const { profile, supabase } = await requireAdmin();
   const visits = hasPermission(profile, 'visits') ? await getAdminVisitCount(supabase) : null;
+  let publishedCount: number | null = null;
+  if (hasPermission(profile, 'published_count')) {
+    let r = await supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true).is('deleted_at', null);
+    if (r.error) r = await supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true);
+    publishedCount = r.error ? null : (r.count ?? 0);
+  }
   let pendingResets = 0;
   if (hasPermission(profile, 'temp_password')) {
     try {
@@ -70,6 +76,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
         {visits !== null && (
           <p className="mb-3 text-sm text-gray-600">👁 عدد زيارات الموقع: <b dir="ltr">{visits.toLocaleString('en-US')}</b></p>
+        )}
+        {publishedCount !== null && (
+          <p className="mb-3 text-sm text-gray-600">🛍 المنتجات المنشورة على الموقع: <b dir="ltr">{publishedCount.toLocaleString('en-US')}</b></p>
         )}
         {hasPermission(profile, 'temp_password') && <AutoRefresh seconds={30} />}
         {hasPermission(profile, 'chat') && <ChatAlert />}

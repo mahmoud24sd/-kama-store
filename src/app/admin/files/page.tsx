@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Pagination, { pageNum } from '@/components/admin/Pagination';
 import FolderCard from '@/components/admin/FolderCard';
 import { requirePermission } from '@/lib/auth';
 import { loadFolders } from '@/lib/folders';
@@ -8,13 +9,13 @@ import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'الملفات' };
 
-export default async function FilesPage({ searchParams }: { searchParams: Promise<{ msg?: string; folder?: string }> }) {
+export default async function FilesPage({ searchParams }: { searchParams: Promise<{ msg?: string; folder?: string; fp?: string }> }) {
   const { supabase, profile } = await requirePermission('files');
   const sp = await searchParams;
   const canPublish = (['products', 'bot_publish', 'published'] as const).some((k) => hasPermission(profile, k));
   const canTrash = (['products', 'files'] as const).some((k) => hasPermission(profile, k));
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
-  const [{ folders }, cats] = await Promise.all([loadFolders(supabase, 'inbox'), getCategories()]);
+  const [{ folders, total }, cats] = await Promise.all([loadFolders(supabase, 'inbox', pageNum(sp.fp)), getCategories()]);
 
   return (
     <div className="space-y-3">
@@ -28,6 +29,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
           {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/files" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft canTrash={canTrash} />)}
         </div>
       )}
+      <Pagination total={total} page={pageNum(sp.fp)} param="fp" sp={sp} base="/admin/files" />
     </div>
   );
 }

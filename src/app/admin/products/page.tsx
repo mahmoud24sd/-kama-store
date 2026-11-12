@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { bulkPublish, bulkDraft, bulkTrash } from '@/app/actions/productFiles';
 import FolderCard from '@/components/admin/FolderCard';
+import Pagination, { pageNum } from '@/components/admin/Pagination';
 import SelectAll from '@/components/admin/SelectAll';
 import { loadFolders } from '@/lib/folders';
 import { getCategories } from '@/lib/queries';
@@ -17,7 +18,7 @@ export const metadata: Metadata = { title: 'المنتجات' };
 
 type Row = Product & { file_id?: string | null; published_at?: string | null; deleted_at?: string | null };
 
-export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ q?: string; error?: string; msg?: string; folder?: string }> }) {
+export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ q?: string; error?: string; msg?: string; folder?: string; fp?: string; pp?: string }> }) {
   const { supabase, profile } = await requireAdmin();
   const canProducts = hasPermission(profile, 'products');
   const canBot = hasPermission(profile, 'bot_publish');
@@ -25,13 +26,15 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
 
   const term = sp.q?.replace(/[,()%_\\*]/g, ' ').trim();
+  const pp = pageNum(sp.pp);
+  const fp = pageNum(sp.fp);
   const build = (withDeleted: boolean, loose: boolean) => {
     let q = supabase
       .from('products')
-      .select('*, product_images(id,url,sort_order), categories(name,slug), product_variants(id,product_id,color,size,price_override,stock,sku)')
+      .select('*, product_images(id,url,sort_order), categories(name,slug), product_variants(id,product_id,color,size,price_override,stock,sku)', { count: 'exact' })
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-      .limit(1000);
+      .range((pp - 1) * 10, pp * 10 - 1);
     if (withDeleted) q = q.is('deleted_at', null);
     if (loose) q = q.is('file_id', null);
     if (term) q = q.ilike('name', `%${term}%`);
@@ -42,7 +45,9 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   const products = (res.data ?? []) as unknown as Row[];
 
   const fileName = new Map<string, string>();
-  const folders = term ? [] : (await loadFolders(supabase, 'public')).folders;
+  const folderData = term ? { folders: [], total: 0 } : await loadFolders(supabase, 'public', fp);
+  const folders = folderData.folders;
+  const looseTotal = res.count ?? products.length;
   const cats = folders.length > 0 ? await getCategories() : [];
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
 
@@ -52,7 +57,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-extrabold">المنتجات ({products.length})</h1>
+        <h1 className="text-xl font-extrabold">المنتجات</h1>
         <div className="flex flex-wrap gap-2">
           {hasPermission(profile, 'trash') && <Link href="/admin/trash" className={ui.btnOutline}>🗑 المهملات</Link>}
           {canProducts && <Link href="/admin/products/import" className={ui.btnOutline}>رفع ملف (إكسل / CSV / JSON)</Link>}
@@ -69,9 +74,10 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
           <div className="grid gap-3 lg:grid-cols-2">
             {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} />)}
           </div>
+          <Pagination total={folderData.total} page={fp} param="fp" sp={sp} base="/admin/products" />
         </section>
       )}
-      {folders.length > 0 && <h2 className="font-extrabold">منتجات برّه الفولدرات ({products.length})</h2>}
+      {folders.length > 0 && <h2 className="font-extrabold">منتجات برّه الفولدرات ({looseTotal})</h2>}
 
       <form className="flex gap-2" role="search">
         <input name="q" defaultValue={sp.q} placeholder="ابحث بالاسم..." className={ui.input} />
@@ -130,6 +136,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
           </div>
         </form>
       )}
+      <Pagination total={looseTotal} page={pp} param="pp" sp={sp} base="/admin/products" />
     </div>
   );
 }

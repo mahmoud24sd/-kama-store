@@ -2,11 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import ImportForm from '@/components/admin/ImportForm';
 import { requirePermission } from '@/lib/auth';
+import { getCategories } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'استيراد منتجات' };
 
 export default async function ImportPage() {
   await requirePermission('products');
+  const cats = await getCategories();
   return (
     <div className="max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
@@ -24,7 +26,7 @@ export default async function ImportPage() {
         <li><b>publish</b> اكتب yes ليظهر المنتج في المتجر، أو اتركه فارغًا ليُحفظ كمسودة.</li>
         <li><b>أنواع الملفات:</b> إكسل (.xlsx) أو CSV أو JSON مباشرة، من غير تحويل. كل ملف بيظهر في صفحة «المنتجات» كمجموعة تقدر تعدّل زيادتها أو تنشرها أو تحذفها كلها مرة واحدة.</li>
       </ol>
-      <ImportForm />
+      <ImportForm categories={cats.map((c) => ({ id: c.id, name: c.name }))} />
     </div>
   );
 }

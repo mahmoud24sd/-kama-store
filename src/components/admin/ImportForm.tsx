@@ -4,13 +4,26 @@ import { useActionState } from 'react';
 import { importProducts, type ImportState } from '@/app/actions/import';
 import { ui } from '@/lib/ui';
 
-export default function ImportForm() {
+export default function ImportForm({ categories }: { categories: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(importProducts, {} as ImportState);
   return (
     <form action={action} className="space-y-4">
       <div>
         <label className={ui.label} htmlFor="file">ارفع الملف: إكسل (xlsx) / CSV / JSON</label>
         <input id="file" type="file" name="file" required accept=".xlsx,.csv,.json,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="mt-2 block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-brand-800 file:px-4 file:py-2 file:text-white" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className={ui.label} htmlFor="category_id">القسم (للمنتجات اللي ملهاش قسم في الملف)</label>
+          <select id="category_id" name="category_id" defaultValue="" className={ui.input}>
+            <option value="">بدون قسم</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={ui.label} htmlFor="markup">الزيادة على كل منتج (جنيه)</label>
+          <input id="markup" name="markup" type="number" min={0} step="1" defaultValue={0} className={ui.input} />
+        </div>
       </div>
       <div>
         <label className={ui.label} htmlFor="mode">حالة المنتجات بعد الاستيراد</label>

@@ -60,6 +60,8 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     return { message: e instanceof Error && e.message ? `تعذّر قراءة الملف: ${e.message}` : 'تعذّر قراءة الملف. اتأكد إنه إكسل (xlsx) أو CSV أو JSON سليم.' };
   }
   const mode = String(formData.get('mode') ?? 'csv');
+  const catPick = String(formData.get('category_id') ?? '');
+  const addMoney = Math.min(Math.max(Number(formData.get('markup') ?? 0) || 0, 0), 1_000_000);
   if (rows.length < 2) return { message: 'الملف فارغ أو بدون صفوف منتجات' };
   if (rows.length - 1 > MAX_ROWS) return { message: `الحد الأقصى ${MAX_ROWS} منتج في الملف الواحد. قسّم الملف.` };
 
@@ -147,7 +149,7 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
         brand: get(r, 'brand') || null,
         ...(shop ? { shop_name: shop } : {}),
         ...(details ? { details } : {}),
-        category_id: catName ? catMap.get(catName) : null,
+        category_id: catName ? catMap.get(catName) : ([...catMap.values()].includes(catPick) ? catPick : null),
         price,
         compare_at_price: compare,
         stock: stock ?? 0,
@@ -157,11 +159,22 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     });
   });
 
+  // الزيادة المختارة (جنيه) تتطبق تلقائيًا على كل منتج
+  const origPrice = new Map<number, number>();
+  if (addMoney > 0) {
+    for (const c of valid) {
+      const orig = Number(c.row.price);
+      origPrice.set(c.line, orig);
+      c.row.price = orig + addMoney;
+      if (c.row.compare_at_price != null && Number(c.row.compare_at_price) < orig + addMoney) c.row.compare_at_price = null;
+    }
+  }
+
   // الملف نفسه = مجموعة. الزيادة = الفرق الأكثر تكرارًا بين السعر وسعر التكلفة (لو الملف جاي من البوت)
   const diffs = valid.map((c) => (c.priv?.cost_price != null && Number(c.row.price) >= c.priv.cost_price ? Number(c.row.price) - c.priv.cost_price : null)).filter((d): d is number => d !== null && d > 0);
   const freq = new Map<number, number>();
   for (const d of diffs) freq.set(d, (freq.get(d) ?? 0) + 1);
-  const markup = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+  const markup = addMoney > 0 ? addMoney : ([...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0);
   let fileId: string | null = null;
   if (valid.length > 0) {
     const { data: pf } = await supabase
@@ -174,7 +187,7 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
       for (const c of valid) {
         const cost = c.priv?.cost_price;
         c.row.file_id = fileId;
-        c.row.base_price = cost != null && cost <= Number(c.row.price) ? cost : Math.max(Number(c.row.price) - markup, 0);
+        c.row.base_price = origPrice.has(c.line) ? origPrice.get(c.line) : cost != null && cost <= Number(c.row.price) ? cost : Math.max(Number(c.row.price) - markup, 0);
       }
     } else {
       errors.push('المنتجات اتحفظت لكن من غير «ملف» لأن ملف supabase/migrations/020_product_files.sql لسه ما اتشغّلش.');

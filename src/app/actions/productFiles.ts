@@ -14,7 +14,10 @@ async function ctx(perms: Permission[]) {
   if (!perms.some((p) => hasPermission(c.profile, p))) throw new Error('FORBIDDEN');
   return c;
 }
-const canFiles: Permission[] = ['products', 'bot_publish'];
+const canFiles: Permission[] = ['products', 'bot_publish', 'drafts', 'published'];
+const canTrashMove: Permission[] = ['products', 'drafts', 'published'];
+const canRestore: Permission[] = ['products', 'trash'];
+const canPurge: Permission[] = ['trash_purge'];
 
 function back(path: string, msg?: string): never {
   revalidatePath('/', 'layout');
@@ -59,7 +62,7 @@ export async function draftFile(formData: FormData) {
 
 /** حذف الملف كله = نقله للمهملات (يختفي من الموقع ويمكن استرجاعه) */
 export async function trashFile(formData: FormData) {
-  const { supabase } = await ctx(['products']);
+  const { supabase } = await ctx(canTrashMove);
   const id = fileId(formData);
   if (!id.success) return back('/admin/products');
   const now = new Date().toISOString();
@@ -69,7 +72,7 @@ export async function trashFile(formData: FormData) {
 }
 
 export async function restoreFile(formData: FormData) {
-  const { supabase } = await ctx(['products']);
+  const { supabase } = await ctx(canRestore);
   const id = fileId(formData);
   if (!id.success) return back('/admin/trash');
   await supabase.from('products').update({ deleted_at: null }).eq('file_id', id.data);
@@ -89,7 +92,7 @@ async function purgeProducts(supabase: Awaited<ReturnType<typeof ctx>>['supabase
 
 /** حذف نهائي لملف من المهملات */
 export async function purgeFile(formData: FormData) {
-  const { supabase } = await ctx(['products']);
+  const { supabase } = await ctx(canPurge);
   const id = fileId(formData);
   if (!id.success) return back('/admin/trash');
   const { data } = await supabase.from('products').select('id').eq('file_id', id.data);
@@ -100,7 +103,7 @@ export async function purgeFile(formData: FormData) {
 
 /** إجراء جماعي على منتجات محددة: publish | draft | trash | restore | purge */
 async function runBulk(formData: FormData, op: string) {
-  const need: Permission[] = op === 'publish' || op === 'draft' ? canFiles : ['products'];
+  const need: Permission[] = op === 'publish' || op === 'draft' ? canFiles : op === 'trash' ? canTrashMove : op === 'restore' ? canRestore : canPurge;
   const { supabase, profile } = await ctx(need);
   const to = where(formData);
   const ids = IDS.safeParse(formData.getAll('ids').map(String));
@@ -137,7 +140,7 @@ export async function bulkPurge(formData: FormData) { return runBulk(formData, '
 
 /** تفريغ المهملات بالكامل (حذف نهائي) */
 export async function emptyTrash() {
-  const { supabase } = await ctx(['products']);
+  const { supabase } = await ctx(canPurge);
   const { data } = await supabase.from('products').select('id').not('deleted_at', 'is', null);
   await purgeProducts(supabase, (data ?? []).map((p) => p.id as string));
   await supabase.from('product_files').delete().not('deleted_at', 'is', null);

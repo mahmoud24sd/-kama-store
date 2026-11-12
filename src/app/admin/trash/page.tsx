@@ -2,13 +2,15 @@ import type { Metadata } from 'next';
 import { bulkRestore, bulkPurge, emptyTrash, purgeFile, restoreFile } from '@/app/actions/productFiles';
 import SelectAll from '@/components/admin/SelectAll';
 import { requirePermission } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 import { formatPrice } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'المهملات' };
 
 export default async function TrashPage({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
-  const { supabase } = await requirePermission('products');
+  const { supabase, profile } = await requirePermission('trash');
+  const canPurge = hasPermission(profile, 'trash_purge');
   const sp = await searchParams;
   const { data: files, error } = await supabase.from('product_files').select('id,name,deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false });
   const { data: prods } = await supabase.from('products').select('id,name,price,deleted_at,file_id').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }).limit(500);
@@ -21,7 +23,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-extrabold">🗑 المهملات</h1>
-        {(files?.length || loose.length) ? (
+        {canPurge && (files?.length || loose.length) ? (
           <form action={emptyTrash}><button className={ui.btnDanger}>تفريغ المهملات نهائيًا</button></form>
         ) : null}
       </div>
@@ -40,7 +42,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
               </div>
               <div className="flex gap-2">
                 <form action={restoreFile}><input type="hidden" name="id" value={f.id as string} /><button className={ui.btnOutline}>استرجاع</button></form>
-                <form action={purgeFile}><input type="hidden" name="id" value={f.id as string} /><button className={ui.btnDanger}>حذف نهائي</button></form>
+                {canPurge && <form action={purgeFile}><input type="hidden" name="id" value={f.id as string} /><button className={ui.btnDanger}>حذف نهائي</button></form>}
               </div>
             </div>
           ))}
@@ -54,7 +56,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
           <div className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2 text-sm">
             <span className="font-bold">المحدّد:</span>
             <button formAction={bulkRestore} className={ui.btnOutline}>استرجاع</button>
-            <button formAction={bulkPurge} className={ui.btnDanger}>حذف نهائي</button>
+            {canPurge && <button formAction={bulkPurge} className={ui.btnDanger}>حذف نهائي</button>}
           </div>
           <table className="w-full">
             <thead><tr className="border-b border-gray-200"><th className={ui.th}><SelectAll /></th><th className={ui.th}>المنتج</th><th className={ui.th}>السعر</th><th className={ui.th}>اتحذف</th></tr></thead>

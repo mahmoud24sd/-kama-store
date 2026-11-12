@@ -22,6 +22,10 @@ export const PERMISSIONS = [
   { key: 'sources', label: 'ربط المتاجر' },
   { key: 'settings', label: 'إعدادات التواصل' },
   { key: 'visits', label: 'عدد الزيارات' },
+  { key: 'drafts', label: 'صفحة المسودات' },
+  { key: 'published', label: 'صفحة المنشور للعلن' },
+  { key: 'trash', label: 'صفحة المهملات (الحذف)' },
+  { key: 'trash_purge', label: 'الحذف النهائي من الموقع' },
   { key: 'bot_publish', label: 'نشر المنتجات من بوت تليجرام' },
   { key: 'screenshots', label: 'الاسكرينات (صور إثبات الدفع)' },
 ] as const;

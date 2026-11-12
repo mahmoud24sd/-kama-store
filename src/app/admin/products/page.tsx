@@ -57,7 +57,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-extrabold">المنتجات ({products.length})</h1>
         <div className="flex flex-wrap gap-2">
-          <Link href="/admin/trash" className={ui.btnOutline}>🗑 المهملات</Link>
+          {hasPermission(profile, 'trash') && <Link href="/admin/trash" className={ui.btnOutline}>🗑 المهملات</Link>}
           {canProducts && <Link href="/admin/products/import" className={ui.btnOutline}>رفع ملف (إكسل / CSV / JSON)</Link>}
           {canProducts && <Link href="/admin/products/new" className={ui.btnPrimary}><Plus className="h-4 w-4" /> منتج جديد</Link>}
         </div>

@@ -7,6 +7,9 @@ const nextConfig = {
   images: {
     // https من أي موقع: لأن الاستيراد بالجملة يستخدم روابط صور خارجية
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
+    // الصورة بعد تصغيرها تبقى محفوظة 30 يوم بدل إعادة معالجتها
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+    formats: ['image/webp'],
   },
   eslint: { ignoreDuringBuilds: true },
 };

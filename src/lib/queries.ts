@@ -24,8 +24,9 @@ export async function getCategories(): Promise<Category[]> {
   return fetchCategories();
 }
 
-export async function getHomeData() {
-  const supabase = await createClient();
+async function loadHomeData() {
+  // المنتجات المفعّلة عامة، فنستخدم عميلًا عامًا ونخزن النتيجة دقيقة بدل 5 استعلامات في كل زيارة
+  const supabase = createPublicClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const nowIso = new Date().toISOString();
   const base = () => supabase.from('products').select(PRODUCT_SELECT).eq('is_active', true);
 
@@ -41,7 +42,7 @@ export async function getHomeData() {
       .order('rating_avg', { ascending: false })
       .order('rating_count', { ascending: false })
       .limit(8),
-    supabase.from('products').select('brand').eq('is_active', true).not('brand', 'is', null),
+    supabase.from('products').select('brand').eq('is_active', true).not('brand', 'is', null).limit(300),
   ]);
 
   const brands = Array.from(
@@ -55,6 +56,13 @@ export async function getHomeData() {
     recommended: (recommended.data ?? []) as unknown as Product[],
     brands,
   };
+}
+
+
+const fetchHomeData = unstable_cache(loadHomeData, ['home-data-v1'], { revalidate: 60 });
+
+export async function getHomeData() {
+  return fetchHomeData();
 }
 
 export type SearchParams = {

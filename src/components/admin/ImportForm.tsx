@@ -38,6 +38,7 @@ export default function ImportForm({ categories }: { categories: { id: string; n
       {state.created !== undefined && (
         <div className="space-y-2">
           <p className={ui.alertOk}>تم استيراد <b>{state.created}</b> منتج{state.failed ? ` — وفشل ${state.failed}` : ''}.</p>
+          {!!state.duplicates && <p className={ui.alertError}>{state.duplicates} منتج متكرر (موجود قبل كده) ما اترفعش، واتنقل للمهملات بسبب «متكرر».</p>}
           {state.fileId && <p className="text-sm"><a href={`/admin/products/files/${state.fileId}`} className="font-bold text-brand-600 underline">افتح الملف وشوف المنتجات ←</a></p>}
           {!!state.noImages && <p className={ui.alertError}>{state.noImages} منتج من غير صور. اتأكد إن عمود الصور اسمه <b>image_urls</b> (أو images / الصور) وفيه روابط تبدأ بـ https. الصور اللي جوه خلايا إكسل نفسها (مش روابط) مش بتتقري.</p>}
           {state.errors && state.errors.length > 0 && (

@@ -122,6 +122,7 @@ async function runBulk(formData: FormData, op: string) {
     return back(to, `${ids.data.length} منتج اتنقل للمهملات`);
   }
   if (op === 'restore') {
+    await supabase.from('products').update({ deleted_at: null, trash_reason: null }).in('id', ids.data);
     await supabase.from('products').update({ deleted_at: null }).in('id', ids.data);
     return back(to, `اترجع ${ids.data.length} منتج كمسودة`);
   }

@@ -13,9 +13,12 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
   const canPurge = hasPermission(profile, 'trash_purge');
   const sp = await searchParams;
   const { data: files, error } = await supabase.from('product_files').select('id,name,deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false });
-  const { data: prods } = await supabase.from('products').select('id,name,price,deleted_at,file_id').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }).limit(500);
+  const pq = (cols: string) => supabase.from('products').select(cols).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }).limit(500);
+  let pr = await pq('id,name,price,deleted_at,file_id,trash_reason');
+  if (pr.error) pr = await pq('id,name,price,deleted_at,file_id');
+  const prods = (pr.data ?? []) as unknown as { id: string; name: string; price: number; deleted_at: string; file_id: string | null; trash_reason?: string | null }[];
   const trashedFiles = new Set((files ?? []).map((f) => f.id as string));
-  const loose = (prods ?? []).filter((p) => !p.file_id || !trashedFiles.has(p.file_id as string));
+  const loose = prods.filter((p) => !p.file_id || !trashedFiles.has(p.file_id as string));
   const inFile = new Map<string, number>();
   for (const p of prods ?? []) if (p.file_id) inFile.set(p.file_id as string, (inFile.get(p.file_id as string) ?? 0) + 1);
 
@@ -59,13 +62,14 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
             {canPurge && <button formAction={bulkPurge} className={ui.btnDanger}>حذف نهائي</button>}
           </div>
           <table className="w-full">
-            <thead><tr className="border-b border-gray-200"><th className={ui.th}><SelectAll /></th><th className={ui.th}>المنتج</th><th className={ui.th}>السعر</th><th className={ui.th}>اتحذف</th></tr></thead>
+            <thead><tr className="border-b border-gray-200"><th className={ui.th}><SelectAll /></th><th className={ui.th}>المنتج</th><th className={ui.th}>السعر</th><th className={ui.th}>السبب</th><th className={ui.th}>اتحذف</th></tr></thead>
             <tbody>
               {loose.map((p) => (
                 <tr key={p.id as string} className="border-b border-gray-100">
                   <td className={ui.td}><input type="checkbox" name="ids" value={p.id as string} aria-label="تحديد" /></td>
                   <td className={ui.td}>{p.name as string}</td>
                   <td className={ui.td}>{formatPrice(Number(p.price))}</td>
+                  <td className={ui.td}>{p.trash_reason ? <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">{p.trash_reason}</span> : <span className="text-xs text-gray-400">محذوف</span>}</td>
                   <td className={`${ui.td} text-xs text-gray-500`}>{new Date(p.deleted_at as string).toLocaleDateString('ar-EG')}</td>
                 </tr>
               ))}

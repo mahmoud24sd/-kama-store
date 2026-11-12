@@ -2,10 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { assertPermission } from '@/lib/auth';
+import { existingNames, hasTrashReason, normName } from '@/lib/dedupe';
 import { readTable } from '@/lib/importFile';
 import { slugify } from '@/lib/utils';
 
-export type ImportState = { created?: number; failed?: number; errors?: string[]; message?: string; fileId?: string; noImages?: number };
+export type ImportState = { created?: number; failed?: number; errors?: string[]; message?: string; fileId?: string; noImages?: number; duplicates?: number };
 
 const MAX_ROWS = 500;
 const BATCH = 50;
@@ -193,7 +194,32 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
       errors.push('المنتجات اتحفظت لكن من غير «ملف» لأن ملف supabase/migrations/020_product_files.sql لسه ما اتشغّلش.');
     }
   }
-  const noImages = valid.filter((c) => c.images.length === 0).length;
+  // المنتج المتكرر (نفس الاسم موجود قبل كده أو مكرر في الملف) ما بيترفعش: بيتحط في المهملات بسبب «متكرر»
+  const seen = await existingNames(supabase);
+  const canReason = await hasTrashReason(supabase);
+  const dupLines = new Set<number>();
+  for (const c of valid) {
+    const key = normName(String(c.row.name));
+    if (seen.has(key)) dupLines.add(c.line);
+    else seen.add(key);
+  }
+  if (dupLines.size > 0) {
+    if (canReason && fileId) {
+      const now = new Date().toISOString();
+      for (const c of valid) {
+        if (!dupLines.has(c.line)) continue;
+        c.row.deleted_at = now;
+        c.row.is_active = false;
+        c.row.trash_reason = 'متكرر';
+        c.images = [];
+        c.priv = null;
+      }
+    } else {
+      for (let i = valid.length - 1; i >= 0; i--) if (dupLines.has(valid[i].line)) valid.splice(i, 1);
+      errors.push(`${dupLines.size} منتج متكرر ما اترفعش (شغّل ملفي 020 و022 عشان يتسجّلوا في المهملات).`);
+    }
+  }
+  const noImages = valid.filter((c) => !dupLines.has(c.line) && c.images.length === 0).length;
 
   let created = 0;
   for (let i = 0; i < valid.length; i += BATCH) {
@@ -228,9 +254,9 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
       const { error: privErr } = await supabase.from('product_private').insert(privRows);
       if (privErr) errors.push(`الدفعة التي تبدأ من سطر ${chunk[0].line}: حُفظت المنتجات لكن تعذّر حفظ التفاصيل الخاصة (شغّل ملف supabase/migrations/006_product_details.sql)`);
     }
-    created += data.length;
+    created += data.filter((d) => !chunk.some((c) => c.row.slug === d.slug && dupLines.has(c.line))).length;
   }
 
   revalidatePath('/', 'layout');
-  return { created, failed: rows.length - 1 - created, errors: errors.slice(0, 100), fileId: fileId ?? undefined, noImages };
+  return { created, failed: rows.length - 1 - created - dupLines.size, errors: errors.slice(0, 100), fileId: fileId ?? undefined, noImages, duplicates: dupLines.size };
 }

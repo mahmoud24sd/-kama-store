@@ -6,6 +6,7 @@ import { claimMatches } from '@/lib/telegramClaim';
 import { getSiteUrl } from '@/lib/site';
 import { slugify } from '@/lib/utils';
 import { writeXlsx } from '@/lib/xlsx';
+import { existingNames, hasTrashReason, normName } from '@/lib/dedupe';
 import { channelFromLink, fetchChannelPage, groupPosts } from '@/lib/tmeScrape';
 
 export const dynamic = 'force-dynamic';
@@ -276,6 +277,9 @@ async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
     const { data: cats } = await db.from('categories').select('id,name,slug');
     categoryId = (cats ?? []).find((c) => String(c.name).trim().toLowerCase() === st.category.trim().toLowerCase() || String(c.slug).toLowerCase() === st.category.trim().toLowerCase())?.id ?? null;
   }
+  const seen = await existingNames(db);
+  const canReason = await hasTrashReason(db);
+  let dups = 0;
   const parts = Math.ceil(st.ready.length / CHUNK);
   const day = new Date().toLocaleDateString('en-GB');
   for (let k = 0; k < parts; k++) {
@@ -286,21 +290,32 @@ async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
     let saved = 0;
     for (let i = 0; i < chunk.length; i += 50) {
       const part = chunk.slice(i, i + 50);
-      const rows = part.map((it) => {
+      const isDup = part.map((it) => {
+        const key = normName(String(it.name));
+        if (seen.has(key)) return true;
+        seen.add(key);
+        return false;
+      });
+      const keep = part.map((it, n) => ({ it, dup: isDup[n] })).filter((x) => canReason || !x.dup);
+      dups += part.length - keep.filter((x) => !x.dup).length;
+      if (keep.length === 0) continue;
+      const now = new Date().toISOString();
+      const rows = keep.map(({ it, dup }) => {
         const base = withMarkup(Number(it.price), st.markup);
-        return { name: String(it.name).slice(0, 200), slug: `${slugify(String(it.name)) || 'p'}-${Math.random().toString(36).slice(2, 8)}`, description: (it.description as string) || null, price: base + st.fixed, base_price: base, stock: 10, is_active: false, category_id: categoryId, file_id: file.id as string };
+        return { name: String(it.name).slice(0, 200), slug: `${slugify(String(it.name)) || 'p'}-${Math.random().toString(36).slice(2, 8)}`, description: (it.description as string) || null, price: base + st.fixed, base_price: base, stock: 10, is_active: false, category_id: categoryId, file_id: file.id as string, ...(dup ? { deleted_at: now, trash_reason: 'متكرر' } : {}) };
       });
       const { data: ins, error } = await db.from('products').insert(rows).select('id,slug');
       if (error || !ins) continue;
       const idBySlug = new Map(ins.map((d) => [d.slug as string, d.id as string]));
-      const imgs = part.flatMap((it, n) => { const pid = idBySlug.get(rows[n].slug); return pid ? (it.images as string[]).map((url, o) => ({ product_id: pid, url, sort_order: o })) : []; });
+      const live = keep.filter((x) => !x.dup);
+      const imgs = keep.flatMap(({ it, dup }, n) => { const pid = idBySlug.get(rows[n].slug); return pid && !dup ? (it.images as string[]).map((url, o) => ({ product_id: pid, url, sort_order: o })) : []; });
       if (imgs.length) await db.from('product_images').insert(imgs);
-      const priv = part.flatMap((it, n) => { const pid = idBySlug.get(rows[n].slug); return pid ? [{ product_id: pid, cost_price: Number(it.price), supplier: (it.source as string) || null, notes: noteOf(it) }] : []; });
+      const priv = keep.flatMap(({ it, dup }, n) => { const pid = idBySlug.get(rows[n].slug); return pid && !dup ? [{ product_id: pid, cost_price: Number(it.price), supplier: (it.source as string) || null, notes: noteOf(it) }] : []; });
       if (priv.length) await db.from('product_private').insert(priv);
-      saved += ins.length;
-      await db.from('telegram_items').update({ exported_at: new Date().toISOString() }).in('id', part.map((x) => x.id as string));
+      saved += live.length;
+      await db.from('telegram_items').update({ exported_at: now }).in('id', part.map((x) => x.id as string));
     }
-    await keyboard(chat, `✅ اترفع للموقع (مسودة): «${label}»\n${saved} منتج · زيادة ${st.fixed} جنيه\nافتحه من: ${getSiteUrl()}/admin/products/files/${file.id}`, [[{ text: 'نشر للعلن ✅', data: `pub:${file.id}` }]]);
+    await keyboard(chat, `✅ اترفع للموقع (مسودة): «${label}»\n${saved} منتج · زيادة ${st.fixed} جنيه${dups ? `\n${dups} منتج متكرر ما اترفعش (راح المهملات)` : ''}\nافتحه من: ${getSiteUrl()}/admin/products/files/${file.id}`, [[{ text: 'نشر للعلن ✅', data: `pub:${file.id}` }]]);
   }
 }
 

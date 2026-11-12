@@ -68,7 +68,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm">
           <div>
             <h1 className="text-lg font-extrabold">{title}</h1>
-            <p className="text-sm text-gray-500">{result.total} منتج</p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-sm">
             <span className="text-gray-500">ترتيب:</span>

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { bulkEditDrafts, bulkPublish, bulkTrash } from '@/app/actions/productFiles';
 import { getCategories } from '@/lib/queries';
-import FileBar from '@/components/admin/FileBar';
+import FolderCard from '@/components/admin/FolderCard';
+import { loadFolders } from '@/lib/folders';
 import ProductPick from '@/components/admin/ProductPick';
 import { requirePermission } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
@@ -13,7 +14,8 @@ export const metadata: Metadata = { title: 'المسودات' };
 export default async function DraftsPage({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
   const { supabase, profile } = await requirePermission('drafts');
   const sp = await searchParams;
-  const { files, rows, missing, fileNames } = await loadList(supabase, false);
+  const { rows, missing, fileNames } = await loadList(supabase, false);
+  const { folders } = await loadFolders(supabase, 'draft');
   const cats = await getCategories();
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
   const canPublish = (['products', 'bot_publish', 'published'] as const).some((k) => hasPermission(profile, k));
@@ -24,10 +26,12 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
       <p className="text-sm text-gray-600">منتجات وملفات لسه ما اتنشرتش (مخفية عن العملاء).</p>
       {sp.msg && <p className={ui.alertOk}>{sp.msg}</p>}
       {missing && <p className={ui.alertError}>شغّل ملف supabase/migrations/020_product_files.sql في Supabase.</p>}
-      {files.length > 0 && (
+      {folders.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-bold">ملفات ({files.length})</h2>
-          <div className="grid gap-3 lg:grid-cols-2">{files.map((f) => <FileBar key={f.id} f={f} back="/admin/drafts" canTrash={canTrash} />)}</div>
+          <h2 className="font-bold">📁 فولدرات ({folders.length})</h2>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {folders.map((f) => <FolderCard key={f.id} f={f} back="/admin/drafts" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft={false} canTrash={canTrash} />)}
+          </div>
         </section>
       )}
       <h2 className="font-bold">المنتجات ({rows.length})</h2>

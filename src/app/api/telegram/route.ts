@@ -24,7 +24,7 @@ type TgPhoto = { file_id: string };
 type TgMsg = {
   message_id: number;
   chat: { id: number; type: string; title?: string; username?: string };
-  from?: { id: number };
+  from?: { id: number; first_name?: string; username?: string };
   text?: string;
   caption?: string;
   photo?: TgPhoto[];
@@ -62,6 +62,9 @@ async function getState(db: Db, key: string, fallback: string) {
   return (data?.value as string | undefined) ?? fallback;
 }
 const setState = (db: Db, key: string, value: string) => db.from('telegram_state').upsert({ key, value });
+/** نحفظ اسم الأدمن عشان يظهر في الموقع مين رفع الملف */
+const rememberName = (db: Db, from?: { id: number; first_name?: string; username?: string }) =>
+  from && (from.username || from.first_name) ? setState(db, `name:${from.id}`, from.username ? `@${from.username}` : String(from.first_name)).then(() => null, () => null) : null;
 
 /** ينزّل الصورة من تليجرام ويرفعها لمخزن الموقع ويرجع رابطها العام (لا نكشف توكن البوت أبدًا) */
 async function savePhoto(db: Db, fileId: string): Promise<string | null> {
@@ -421,7 +424,7 @@ export async function POST(req: Request) {
   if (!TOKEN() || !hasServiceRole) return NextResponse.json({ ok: true });
 
   try {
-    const update = (await req.json()) as { callback_query?: { id: string; from: { id: number }; data?: string; message?: { chat: { id: number } } }; message?: TgMsg; channel_post?: TgMsg; my_chat_member?: { chat: TgMsg['chat']; from: { id: number }; new_chat_member?: { status?: string } } };
+    const update = (await req.json()) as { callback_query?: { id: string; from: { id: number; first_name?: string; username?: string }; data?: string; message?: { chat: { id: number } } }; message?: TgMsg; channel_post?: TgMsg; my_chat_member?: { chat: TgMsg['chat']; from: { id: number }; new_chat_member?: { status?: string } } };
     const db = createAdminClient();
     ownerNow = (process.env.TELEGRAM_OWNER_ID ?? '').trim() || (await getState(db, 'owner', ''));
 
@@ -433,6 +436,7 @@ export async function POST(req: Request) {
       const chatId = cq.message?.chat.id ?? cq.from.id;
       await tg('answerCallbackQuery', { callback_query_id: cq.id });
       if (!staff) return NextResponse.json({ ok: true });
+      await rememberName(db, cq.from);
       const [kind, a1, a2] = (cq.data ?? '').split(':');
       if (kind === 'exp' && (a2 === 'xlsx' || a2 === 'json' || a2 === 'csv')) await exportFiles(db, chatId, cq.from.id, a1 === 'all', a2);
       else if (kind === 'cat') {
@@ -474,6 +478,7 @@ export async function POST(req: Request) {
     const isOwner = String(m.from?.id ?? '') === OWNER() && OWNER() !== '';
     const isStaff = isOwner || (m.from?.id !== undefined && (await getAdmins(db)).includes(String(m.from.id)));
     const text = m.text ?? '';
+    if (isStaff) await rememberName(db, m.from);
 
     // ربط المالك بالكود الظاهر في لوحة التحكم (مرة واحدة، ولا يعمل لو فيه مالك بالفعل)
     const claim = text.match(/^\/claim(?:@\w+)?\s+(\d{8})\s*$/i);

@@ -145,12 +145,10 @@ export async function bulkTrash(formData: FormData) { return runBulk(formData, '
 export async function bulkRestore(formData: FormData) { return runBulk(formData, 'restore'); }
 export async function bulkPurge(formData: FormData) { return runBulk(formData, 'purge'); }
 
-/** تعديل جماعي على منتجات محددة (صفحة المسودات): قسم / ماركة / محل / سعر / مخزون. الخانات الفاضية ما بتتغيّرش */
-export async function bulkEditDrafts(formData: FormData) {
-  const { supabase } = await ctx(['drafts_edit', 'products']);
-  const to = where(formData);
-  const ids = IDS.safeParse(formData.getAll('ids').map(String));
-  if (!ids.success || ids.data.length === 0) return back(to, 'حدّد منتج واحد على الأقل');
+type EditCtx = Awaited<ReturnType<typeof ctx>>['supabase'];
+
+/** يطبّق تعديل جماعي (قسم / ماركة / محل / سعر / مخزون). الخانات الفاضية ما بتتغيّرش. يرجع رسالة */
+async function applyEdit(supabase: EditCtx, ids: string[], formData: FormData): Promise<string> {
   const patch: Record<string, unknown> = {};
   const cat = String(formData.get('category_id') ?? '');
   if (cat === '__none') patch.category_id = null;
@@ -162,7 +160,7 @@ export async function bulkEditDrafts(formData: FormData) {
   const stockRaw = String(formData.get('stock') ?? '').trim();
   if (stockRaw !== '') {
     const st = z.coerce.number().int().min(0).max(100000).safeParse(stockRaw);
-    if (!st.success) return back(to, 'المخزون لازم يكون رقم صحيح');
+    if (!st.success) return 'المخزون لازم يكون رقم صحيح';
     patch.stock = st.data;
   }
   const num = (k: string) => {
@@ -173,17 +171,41 @@ export async function bulkEditDrafts(formData: FormData) {
   };
   const setP = num('price');
   const addP = num('price_add');
-  if (Number.isNaN(setP) || Number.isNaN(addP)) return back(to, 'السعر لازم يكون رقم');
-  if (Object.keys(patch).length === 0 && setP === null && addP === null) return back(to, 'اكتب أو اختار حاجة تتعدّل');
-  if (Object.keys(patch).length > 0) {
-    const { error } = await supabase.from('products').update(patch).in('id', ids.data);
-    if (error) return back(to, 'تعذّر التعديل');
+  if (Number.isNaN(setP) || Number.isNaN(addP)) return 'السعر لازم يكون رقم';
+  if (Object.keys(patch).length === 0 && setP === null && addP === null) return 'اكتب أو اختار حاجة تتعدّل';
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200);
+    if (Object.keys(patch).length > 0) {
+      const { error } = await supabase.from('products').update(patch).in('id', chunk);
+      if (error) return 'تعذّر التعديل';
+    }
+    if (setP !== null || addP !== null) {
+      const { error } = await supabase.rpc('bulk_edit_price', { p_ids: chunk, p_set: setP, p_add: addP });
+      if (error) return 'تعذّر تعديل السعر. اتأكد إن ملف 024 اتشغّل.';
+    }
   }
-  if (setP !== null || addP !== null) {
-    const { error } = await supabase.rpc('bulk_edit_price', { p_ids: ids.data, p_set: setP, p_add: addP });
-    if (error) return back(to, 'تعذّر تعديل السعر. اتأكد إن ملف 024 اتشغّل.');
-  }
-  return back(to, `اتعدّل ${ids.data.length} منتج`);
+  return `اتعدّل ${ids.length} منتج`;
+}
+
+/** تعديل جماعي على منتجات محددة (صفحة المسودات) */
+export async function bulkEditDrafts(formData: FormData) {
+  const { supabase } = await ctx(['drafts_edit', 'products']);
+  const to = where(formData);
+  const ids = IDS.safeParse(formData.getAll('ids').map(String));
+  if (!ids.success || ids.data.length === 0) return back(to, 'حدّد منتج واحد على الأقل');
+  return back(to, await applyEdit(supabase, ids.data, formData));
+}
+
+/** تعديل جماعي على كل منتجات ملف (فولدر) */
+export async function bulkEditFile(formData: FormData) {
+  const { supabase } = await ctx(['drafts_edit', 'products']);
+  const to = where(formData);
+  const id = fileId(formData);
+  if (!id.success) return back(to);
+  const { data } = await supabase.from('products').select('id').eq('file_id', id.data).is('deleted_at', null).limit(1000);
+  const ids = (data ?? []).map((p) => p.id as string);
+  if (ids.length === 0) return back(to, 'الملف فاضي');
+  return back(to, await applyEdit(supabase, ids, formData));
 }
 
 /** تفريغ المهملات بالكامل (حذف نهائي) */

@@ -21,6 +21,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/coupons', label: 'الكوبونات', icon: Tag, perm: 'coupons' },
   { href: '/admin/customers', label: 'العملاء', icon: Users, perm: 'users' },
   { href: '/admin/publishing', label: 'طلبات النشر', icon: Upload, perm: 'publishing' },
+  { href: '/admin/screenshots', label: 'الاسكرينات', icon: Upload, perm: 'screenshots' },
   { href: '/admin/chat', label: 'الدردشة', icon: MessageCircle, perm: 'chat' },
   { href: '/admin/password-requests', label: 'طلبات كلمة المرور', icon: KeyRound, perm: 'temp_password' },
   { href: '/admin/reviews', label: 'التقييمات', icon: Star, perm: 'reviews' },

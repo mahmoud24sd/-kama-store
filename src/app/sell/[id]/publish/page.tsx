@@ -37,13 +37,13 @@ export default async function PublishPage({
 
       <div className={`${ui.card} space-y-3 p-4`}>
         <ol className="list-decimal space-y-2 pe-5 text-sm leading-7">
-          <li>حوّل مبلغ <b>{fee} جنيه</b> عبر <b>InstaPay</b> أو <b>محفظتك</b> (فودافون كاش وغيرها) إلى أحد الحسابات التالية:
-            <div className="my-1 whitespace-pre-line rounded-lg bg-gray-50 p-2 text-center text-base font-extrabold" dir="auto">{instapay || 'لم يحدد المالك الحساب بعد'}</div>
+          <li>حوّل مبلغ <b>{fee} جنيه</b> على الرقم التالي، والتحويل عن طريق <b>محفظة</b> أو <b>انستا باي</b>:
+            <div className="my-1 whitespace-pre-line rounded-lg bg-gray-50 p-2 text-center text-xl font-extrabold" dir="auto">{instapay}</div>
           </li>
-          <li>انسخ <b>رقم العملية</b> (Reference Number) الذي يظهر بعد التحويل.</li>
-          <li>اكتبه أدناه وأرسل الطلب. بعد أن نتأكد من وصول التحويل ينشر المنتج.</li>
+          <li>خُد <b>سكرين شوت</b> لعملية التحويل، وانسخ <b>رقم العملية</b> (Reference Number).</li>
+          <li>اكتب رقم العملية وارفع الاسكرين أدناه، وأرسل الطلب. بعد ما نتأكد من وصول التحويل المنتج بيتنشر.</li>
         </ol>
-        {!instapay && <p className={ui.alertError}>حساب الدفع غير مضبوط بعد. تواصل معنا قبل التحويل{wa ? ' عبر واتساب' : ''}.</p>}
+        {wa && <p className="text-xs text-gray-500">لأي استفسار: <a href={wa} className="underline">واتساب</a></p>}
       </div>
 
       <form action={submitPublishRequest} className="space-y-3">
@@ -51,6 +51,10 @@ export default async function PublishPage({
         <div>
           <label className={ui.label} htmlFor="payment_ref">رقم العملية *</label>
           <input id="payment_ref" name="payment_ref" required minLength={4} dir="ltr" className={ui.input} />
+        </div>
+        <div>
+          <label className={ui.label} htmlFor="screenshot">صورة التحويل (اسكرين شوت) *</label>
+          <input id="screenshot" name="screenshot" type="file" accept="image/*" required className={ui.input} />
         </div>
         <div>
           <label className={ui.label} htmlFor="sender_phone">رقم الهاتف الذي حوّلت منه (اختياري)</label>

@@ -36,7 +36,7 @@ export default async function PublishingPage({ searchParams }: { searchParams: P
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-extrabold">طلبات نشر المنتجات</h1>
-      <p className="text-sm text-gray-600">قارن رقم العملية بما وصلك في تطبيق InstaPay، ثم اضغط «تأكيد ونشر». لو لم يصل التحويل اضغط «رفض».</p>
+      <p className="text-sm text-gray-600">صور التحويل في تبويب «الاسكرينات» (لمن عنده الصلاحية). قارن رقم العملية بما وصلك في تطبيق InstaPay، ثم اضغط «تأكيد ونشر». لو لم يصل التحويل اضغط «رفض».</p>
       {sp.done && <p className={ui.alertOk}>تم.</p>}
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
       {!hasServiceRole && <p className={ui.alertError}>يلزم إعداد SUPABASE_SERVICE_ROLE_KEY في Vercel.</p>}

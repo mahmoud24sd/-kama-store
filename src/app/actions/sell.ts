@@ -136,14 +136,30 @@ export async function submitPublishRequest(formData: FormData) {
   const { count } = await db.from('product_images').select('id', { count: 'exact', head: true }).eq('product_id', productId.data);
   if (!count) fail(`/sell/${productId.data}`, 'أضف صورة واحدة على الأقل قبل النشر');
 
+  const shot = formData.get('screenshot');
+  let shotPath: string | null = null;
+  if (shot instanceof File && shot.size > 0) {
+    if (!shot.type.startsWith('image/')) fail(back, 'ارفع صورة فقط (اسكرين شوت التحويل)');
+    if (shot.size > MAX_IMAGE_BYTES) fail(back, 'حجم الصورة كبير. الحد الأقصى 5 ميجا');
+    const ext = (shot.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'jpg';
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await db.storage.from('payment-screenshots').upload(path, shot, { contentType: shot.type, upsert: false });
+    if (upErr) fail(back, 'تعذر رفع الاسكرين. تواصل مع المالك (لازم يتشغل ملف migrations/019)');
+    shotPath = path;
+  } else {
+    fail(back, 'ارفع صورة التحويل (اسكرين شوت)');
+  }
+
   const { fee } = await getPublishSettings();
-  const { error } = await db.from('publish_requests').insert({
+  const row = {
     product_id: productId.data,
     user_id: user.id,
     amount: fee,
     payment_ref: parsed.data!.payment_ref,
     sender_phone: parsed.data!.sender_phone || null,
-  });
+  };
+  let { error } = await db.from('publish_requests').insert({ ...row, screenshot_path: shotPath });
+  if (error && error.code !== '23505') ({ error } = await db.from('publish_requests').insert(row));
   if (error) fail(back, error.code === '23505' ? 'رقم العملية هذا مستخدم من قبل' : 'تعذر إرسال الطلب. تأكد من تشغيل ملف migrations/003');
 
   await db.from('products').update({ status: 'pending' }).eq('id', productId.data).eq('seller_id', user.id);

@@ -116,7 +116,7 @@ export async function saveContactSettings(formData: FormData) {
 }
 
 export async function savePublishSettings(formData: FormData) {
-  const { supabase } = await assertPermission('settings');
+  const { supabase } = await assertOwner();
   const parsed = z
     .object({
       instapay: z.string().trim().max(400),

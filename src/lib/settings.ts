@@ -53,17 +53,18 @@ export function whatsappLink(value: string): string {
   return digits ? `https://wa.me/${digits}` : '';
 }
 
+export const DEFAULT_PAY_NUMBER = '01062503208';
 export type PublishSettings = { instapay: string; fee: number };
 
 /** حساب InstaPay ورسم نشر المنتج (يحدده المالك). الافتراضي 10 جنيه. */
 export const getPublishSettings = cache(async (): Promise<PublishSettings> => {
-  const result: PublishSettings = { instapay: '', fee: 10 };
+  const result: PublishSettings = { instapay: DEFAULT_PAY_NUMBER, fee: 10 };
   try {
     const supabase = await createClient();
     const { data } = await supabase.from('app_settings').select('key,value').in('key', ['instapay_handle', 'publish_fee']);
     for (const r of data ?? []) {
       const v = String(r.value ?? '').trim();
-      if (r.key === 'instapay_handle') result.instapay = v;
+      if (r.key === 'instapay_handle' && v) result.instapay = v;
       if (r.key === 'publish_fee' && Number(v) >= 0 && v !== '') result.fee = Number(v);
     }
   } catch (e) {

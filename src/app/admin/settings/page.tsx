@@ -101,6 +101,13 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
       <hr className="my-6" />
       <h2 className="text-lg font-extrabold">نشر منتجات الغير (InstaPay / محفظة)</h2>
       <p className="text-sm text-gray-600">من يريد نشر منتج عندنا يحوّل الرسم إلى أحد هذه الحسابات ثم يرسل رقم العملية، وتؤكده أنت (أو أدمن لديه صلاحية «تأكيد دفع نشر المنتجات») من صفحة «طلبات النشر».</p>
+      {profile.role !== 'owner' ? (
+        <div className="space-y-1 rounded-lg bg-gray-50 p-3 text-sm">
+          <p>رسم النشر الحالي: <b>{pub.fee} ج.م</b></p>
+          <p className="whitespace-pre-line" dir="auto">الحساب: {pub.instapay}</p>
+          <p className="text-xs text-gray-500">الحساب والرسم يعدّلهم المالك فقط.</p>
+        </div>
+      ) : (
       <form action={savePublishSettings} className="space-y-3">
         <div>
           <label className={ui.label} htmlFor="instapay">حسابات استلام الرسم (InstaPay أو محفظة) — سطر لكل حساب</label>
@@ -112,6 +119,7 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
         </div>
         <button className={ui.btnDark}>حفظ إعدادات النشر</button>
       </form>
+      )}
 
       {profile.role === 'owner' && (
         <>

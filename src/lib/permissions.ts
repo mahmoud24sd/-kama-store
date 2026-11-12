@@ -22,6 +22,7 @@ export const PERMISSIONS = [
   { key: 'sources', label: 'ربط المتاجر' },
   { key: 'settings', label: 'إعدادات التواصل' },
   { key: 'visits', label: 'عدد الزيارات' },
+  { key: 'screenshots', label: 'الاسكرينات (صور إثبات الدفع)' },
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number]['key'];

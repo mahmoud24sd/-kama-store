@@ -180,11 +180,9 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
   const markup = addMoney > 0 ? addMoney : ([...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0);
   let fileId: string | null = null;
   if (valid.length > 0) {
-    const { data: pf } = await supabase
-      .from('product_files')
-      .insert({ name: fileName, source: 'import', markup, is_public: mode === 'public', created_by: profile.id })
-      .select('id')
-      .single();
+    const base = { name: fileName, source: 'import', markup, is_public: mode === 'public', created_by: profile.id };
+    let { data: pf } = await supabase.from('product_files').insert({ ...base, stage: mode === 'public' ? 'public' : 'draft' }).select('id').single();
+    if (!pf) ({ data: pf } = await supabase.from('product_files').insert(base).select('id').single()); // قبل تشغيل 024
     fileId = (pf?.id as string | undefined) ?? null;
     if (fileId) {
       for (const c of valid) {

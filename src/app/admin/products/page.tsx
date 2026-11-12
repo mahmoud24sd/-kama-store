@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { bulkPublish, bulkDraft, bulkTrash } from '@/app/actions/productFiles';
-import FileBar, { type FileRow } from '@/components/admin/FileBar';
 import SelectAll from '@/components/admin/SelectAll';
 import { hasPermission } from '@/lib/permissions';
 import { requireAdmin } from '@/lib/auth';
@@ -27,6 +26,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
     let q = supabase
       .from('products')
       .select('*, product_images(id,url,sort_order), categories(name,slug), product_variants(id,product_id,color,size,price_override,stock,sku)')
+      .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1000);
     if (withDeleted) q = q.is('deleted_at', null);
@@ -37,17 +37,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   if (res.error) res = await build(false); // قبل تشغيل ملف 020
   const products = (res.data ?? []) as unknown as Row[];
 
-  // الملفات (مجموعات المنتجات)
-  let files: FileRow[] = [];
-  const { data: fdata, error: ferr } = await supabase.from('product_files').select('id,name,source,markup,is_public,created_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(100);
-  const noFilesTable = Boolean(ferr);
-  if (fdata?.length) {
-    const counts = new Map<string, number>();
-    const { data: cs } = await supabase.from('products').select('file_id').in('file_id', fdata.map((f) => f.id as string)).is('deleted_at', null).limit(20000);
-    for (const c of cs ?? []) counts.set(c.file_id as string, (counts.get(c.file_id as string) ?? 0) + 1);
-    files = fdata.map((f) => ({ ...(f as Omit<FileRow, 'count'>), markup: Number(f.markup), count: counts.get(f.id as string) ?? 0 }));
-  }
-  const fileName = new Map(files.map((f) => [f.id, f.name]));
+  const fileName = new Map<string, string>();
 
   const { data: pubs } = await supabase.from('profiles').select('id,full_name,email').in('id', [...new Set(products.map((p) => (p as unknown as { published_by?: string }).published_by).filter(Boolean) as string[])].slice(0, 200));
   const pubName = new Map((pubs ?? []).map((u) => [u.id as string, (u.full_name as string) || (u.email as string) || '']));
@@ -64,25 +54,6 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
       </div>
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
       {sp.msg && <p className={ui.alertOk}>{sp.msg}</p>}
-      {noFilesTable && <p className={ui.alertError}>شغّل ملف supabase/migrations/020_product_files.sql في Supabase عشان تظهر الملفات والمهملات.</p>}
-
-      {files.some((f) => !f.is_public) && (
-        <section className="space-y-2 rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
-          <h2 className="font-extrabold">📝 المسودات: ملفات بانتظار النشر ({files.filter((f) => !f.is_public).length})</h2>
-          <p className="text-xs text-gray-600">افتح الملف تشوف المنتجات بشكلها قبل النشر، وبعدين اضغط «نشر للعلن».</p>
-          <div className="grid gap-3 lg:grid-cols-2">
-            {files.filter((f) => !f.is_public).map((f) => <FileBar key={f.id} f={f} back="/admin/products" canTrash={canProducts} />)}
-          </div>
-        </section>
-      )}
-      {files.some((f) => f.is_public) && (
-        <section className="space-y-2">
-          <h2 className="font-extrabold">✅ ملفات منشورة ({files.filter((f) => f.is_public).length})</h2>
-          <div className="grid gap-3 lg:grid-cols-2">
-            {files.filter((f) => f.is_public).map((f) => <FileBar key={f.id} f={f} back="/admin/products" canTrash={canProducts} />)}
-          </div>
-        </section>
-      )}
 
       <form className="flex gap-2" role="search">
         <input name="q" defaultValue={sp.q} placeholder="ابحث بالاسم..." className={ui.input} />

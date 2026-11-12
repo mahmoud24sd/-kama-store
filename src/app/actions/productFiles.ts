@@ -16,8 +16,9 @@ async function ctx(perms: Permission[]) {
   if (!perms.some((p) => hasPermission(c.profile, p))) throw new Error('FORBIDDEN');
   return c;
 }
-const canFiles: Permission[] = ['products', 'bot_publish', 'drafts', 'published'];
-const canTrashMove: Permission[] = ['products', 'drafts', 'published'];
+const canFiles: Permission[] = ['products', 'bot_publish', 'drafts', 'published', 'files'];
+const canPublishFile: Permission[] = ['products', 'bot_publish', 'published'];
+const canTrashMove: Permission[] = ['products', 'drafts', 'published', 'files'];
 const canRestore: Permission[] = ['products', 'trash'];
 const canPurge: Permission[] = ['trash_purge'];
 
@@ -43,10 +44,11 @@ export async function saveFileMarkup(formData: FormData) {
 
 /** نشر الملف للعلن (كمجموعة ومنتجات) أو إرجاعه مسودة */
 async function setVisibility(formData: FormData, pub: boolean) {
-  const { supabase, profile } = await ctx(canFiles);
+  const { supabase, profile } = await ctx(pub ? canPublishFile : canFiles);
   const id = fileId(formData);
   if (!id.success) return back(where(formData));
   await supabase.from('product_files').update({ is_public: pub }).eq('id', id.data);
+  await supabase.from('product_files').update({ stage: pub ? 'public' : 'draft' }).eq('id', id.data);
   await supabase.from('products').update({ is_active: pub }).eq('file_id', id.data).is('deleted_at', null);
   if (pub) {
     const now = new Date().toISOString();
@@ -67,11 +69,11 @@ export async function draftFile(formData: FormData) {
 export async function trashFile(formData: FormData) {
   const { supabase } = await ctx(canTrashMove);
   const id = fileId(formData);
-  if (!id.success) return back('/admin/products');
+  if (!id.success) return back(where(formData));
   const now = new Date().toISOString();
   await supabase.from('products').update({ deleted_at: now, is_active: false }).eq('file_id', id.data);
   await supabase.from('product_files').update({ deleted_at: now, is_public: false }).eq('id', id.data);
-  return back('/admin/products', 'اتنقل الملف وكل منتجاته للمهملات');
+  return back(where(formData), 'اتنقل الملف وكل منتجاته للمهملات');
 }
 
 export async function restoreFile(formData: FormData) {
@@ -142,6 +144,47 @@ export async function bulkDraft(formData: FormData) { return runBulk(formData, '
 export async function bulkTrash(formData: FormData) { return runBulk(formData, 'trash'); }
 export async function bulkRestore(formData: FormData) { return runBulk(formData, 'restore'); }
 export async function bulkPurge(formData: FormData) { return runBulk(formData, 'purge'); }
+
+/** تعديل جماعي على منتجات محددة (صفحة المسودات): قسم / ماركة / محل / سعر / مخزون. الخانات الفاضية ما بتتغيّرش */
+export async function bulkEditDrafts(formData: FormData) {
+  const { supabase } = await ctx(['drafts_edit', 'products']);
+  const to = where(formData);
+  const ids = IDS.safeParse(formData.getAll('ids').map(String));
+  if (!ids.success || ids.data.length === 0) return back(to, 'حدّد منتج واحد على الأقل');
+  const patch: Record<string, unknown> = {};
+  const cat = String(formData.get('category_id') ?? '');
+  if (cat === '__none') patch.category_id = null;
+  else if (/^[0-9a-f-]{36}$/i.test(cat)) patch.category_id = cat;
+  const brand = String(formData.get('brand') ?? '').trim().slice(0, 100);
+  if (brand) patch.brand = brand;
+  const shop = String(formData.get('shop_name') ?? '').trim().slice(0, 100);
+  if (shop) patch.shop_name = shop;
+  const stockRaw = String(formData.get('stock') ?? '').trim();
+  if (stockRaw !== '') {
+    const st = z.coerce.number().int().min(0).max(100000).safeParse(stockRaw);
+    if (!st.success) return back(to, 'المخزون لازم يكون رقم صحيح');
+    patch.stock = st.data;
+  }
+  const num = (k: string) => {
+    const v = String(formData.get(k) ?? '').trim();
+    if (v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  };
+  const setP = num('price');
+  const addP = num('price_add');
+  if (Number.isNaN(setP) || Number.isNaN(addP)) return back(to, 'السعر لازم يكون رقم');
+  if (Object.keys(patch).length === 0 && setP === null && addP === null) return back(to, 'اكتب أو اختار حاجة تتعدّل');
+  if (Object.keys(patch).length > 0) {
+    const { error } = await supabase.from('products').update(patch).in('id', ids.data);
+    if (error) return back(to, 'تعذّر التعديل');
+  }
+  if (setP !== null || addP !== null) {
+    const { error } = await supabase.rpc('bulk_edit_price', { p_ids: ids.data, p_set: setP, p_add: addP });
+    if (error) return back(to, 'تعذّر تعديل السعر. اتأكد إن ملف 024 اتشغّل.');
+  }
+  return back(to, `اتعدّل ${ids.data.length} منتج`);
+}
 
 /** تفريغ المهملات بالكامل (حذف نهائي) */
 export async function emptyTrash() {

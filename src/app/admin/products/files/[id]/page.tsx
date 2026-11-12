@@ -18,7 +18,7 @@ export default async function FilePage({ params, searchParams }: { params: Promi
   const sp = await searchParams;
   const { supabase, profile } = await requireAdmin();
   const canProducts = hasPermission(profile, 'products');
-  if (!(['products', 'bot_publish', 'drafts', 'published'] as const).some((k) => hasPermission(profile, k))) redirect('/admin/no-access');
+  if (!(['products', 'bot_publish', 'drafts', 'published', 'files'] as const).some((k) => hasPermission(profile, k))) redirect('/admin/no-access');
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const { data: f } = await supabase.from('product_files').select('id,name,source,markup,is_public,created_at,deleted_at').eq('id', id).maybeSingle();

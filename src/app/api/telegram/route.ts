@@ -286,7 +286,9 @@ async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
   for (let k = 0; k < parts; k++) {
     const chunk = st.ready.slice(k * CHUNK, (k + 1) * CHUNK);
     const label = `${(chunk[0].source as string) || 'تليجرام'} ${day}${parts > 1 ? ` (${k + 1})` : ''}`;
-    const { data: file, error: fErr } = await db.from('product_files').insert({ name: label, source: 'bot', markup: st.fixed, is_public: false, tg_by: by }).select('id').single();
+    const fileRow = { name: label, source: 'bot', markup: st.fixed, is_public: false, tg_by: by };
+    let { data: file, error: fErr } = await db.from('product_files').insert({ ...fileRow, stage: 'inbox' }).select('id').single();
+    if (!file) ({ data: file, error: fErr } = await db.from('product_files').insert(fileRow).select('id').single()); // قبل تشغيل 024
     if (fErr || !file) return say(chat, 'ما قدرتش أعمل الملف على الموقع. لازم المالك يشغّل ملف supabase/migrations/020_product_files.sql في Supabase.');
     let saved = 0;
     for (let i = 0; i < chunk.length; i += 50) {
@@ -316,7 +318,7 @@ async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
       saved += live.length;
       await db.from('telegram_items').update({ exported_at: now }).in('id', part.map((x) => x.id as string));
     }
-    await keyboard(chat, `✅ اترفع للموقع (مسودة): «${label}»\n${saved} منتج · زيادة ${st.fixed} جنيه${dups ? `\n${dups} منتج متكرر ما اترفعش (راح المهملات)` : ''}\nافتحه من: ${getSiteUrl()}/admin/products/files/${file.id}`, [[{ text: 'نشر للعلن ✅', data: `pub:${file.id}` }]]);
+    await keyboard(chat, `✅ اترفع للموقع (مسودة): «${label}»\n${saved} منتج · زيادة ${st.fixed} جنيه${dups ? `\n${dups} منتج متكرر ما اترفعش (راح المهملات)` : ''}\nافتحه من: ${getSiteUrl()}/admin/files`, [[{ text: 'نشر للعلن ✅', data: `pub:${file.id}` }]]);
   }
 }
 
@@ -346,6 +348,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         '/export  ← ملف بالجديد فقط (تختار إكسل أو JSON أو رفع للموقع)',
         '/exportall  ← نفس الشيء بكل منتجاتك',
         '/upload  ← ارفع الجديد للموقع كمسودة',
+        ...(isOwner ? ['/category  ← اختار القسم اللي المسودات تتحفظ فيه'] : []),
         ...(isOwner ? ['', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
       ].join('\n'),
     );
@@ -364,6 +367,12 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     }
     await setState(db, 'admins', JSON.stringify(admins.filter((a) => a !== id)));
     return say(chat, `تم حذف ${id} من الأدمن.`);
+  }
+  if (cmd === '/category' && isOwner) {
+    const { data: cats } = await db.from('categories').select('id,name').order('name').limit(30);
+    const rows: { text: string; data: string }[][] = [[{ text: 'بدون قسم', data: 'cat:none' }]];
+    for (const c of cats ?? []) rows.push([{ text: String(c.name), data: `cat:${c.id}` }]);
+    return keyboard(chat, `اختار القسم اللي المسودات هتتحفظ فيه (الحالي: ${(await getState(db, 'category', '')) || 'بدون قسم'}):`, rows);
   }
   if (cmd === '/add' || cmd === '/markup' || cmd === '/category' || cmd === '/publish') {
     return say(chat, 'الزيادة والقسم والنشر بيحددهم المالك من الموقع (لوحة التحكم ← بوت تليجرام).');
@@ -426,11 +435,20 @@ export async function POST(req: Request) {
       if (!staff) return NextResponse.json({ ok: true });
       const [kind, a1, a2] = (cq.data ?? '').split(':');
       if (kind === 'exp' && (a2 === 'xlsx' || a2 === 'json' || a2 === 'csv')) await exportFiles(db, chatId, cq.from.id, a1 === 'all', a2);
-      else if (kind === 'up') await uploadToSite(db, chatId, cq.from.id, a1 === 'all');
+      else if (kind === 'cat') {
+        if (!owner) await say(chatId, 'اختيار القسم للمالك بس.');
+        else {
+          let name = '';
+          if (a1 !== 'none' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) name = String((await db.from('categories').select('name').eq('id', a1).maybeSingle()).data?.name ?? '');
+          await setState(db, 'category', name);
+          await say(chatId, name ? `✅ المسودات الجاية هتتحفظ في قسم «${name}».` : '✅ المسودات الجاية من غير قسم.');
+        }
+      } else if (kind === 'up') await uploadToSite(db, chatId, cq.from.id, a1 === 'all');
       else if (kind === 'pub' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) {
         if (!owner) await say(chatId, 'النشر للمالك من هنا، أو من الموقع لمن عنده صلاحية «نشر المنتجات من بوت تليجرام».');
         else {
           await db.from('product_files').update({ is_public: true }).eq('id', a1);
+          await db.from('product_files').update({ stage: 'public' }).eq('id', a1);
           await db.from('products').update({ is_active: true, published_at: new Date().toISOString() }).eq('file_id', a1).is('deleted_at', null);
           await enqueueFile(db, a1);
           await say(chatId, '✅ اتنشر الملف للعلن.');

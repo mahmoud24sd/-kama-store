@@ -6,6 +6,8 @@ import FileBar, { type FileRow } from '@/components/admin/FileBar';
 import SelectAll from '@/components/admin/SelectAll';
 import { requireAdmin } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
+import ProductGrid from '@/components/product/ProductGrid';
+import type { Product } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
@@ -30,6 +32,14 @@ export default async function FilePage({ params, searchParams }: { params: Promi
     .limit(1000);
   type P = { id: string; name: string; price: number; base_price: number | null; is_active: boolean; published_at: string | null; product_images: { url: string; sort_order: number }[] };
   const products = (data ?? []) as unknown as P[];
+  const { data: full } = await supabase
+    .from('products')
+    .select('*, product_images(id,url,sort_order), categories(name,slug), product_variants(id,product_id,color,size,price_override,stock,sku)')
+    .eq('file_id', id)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+    .limit(48);
+  const preview = (full ?? []) as unknown as Product[];
   const row: FileRow = { ...(f as Omit<FileRow, 'count'>), markup: Number(f.markup), count: products.length };
   const back = `/admin/products/files/${id}`;
 
@@ -39,6 +49,13 @@ export default async function FilePage({ params, searchParams }: { params: Promi
       {sp.msg && <p className={ui.alertOk}>{sp.msg}</p>}
       <FileBar f={row} back={back} canTrash={canProducts} detail />
       {f.is_public && <p className="text-sm">رابط الملف للعلن: <Link href={`/files/${id}`} className="font-bold text-brand-600 underline" dir="ltr">/files/{id.slice(0, 8)}…</Link></p>}
+
+      {!f.is_public && preview.length > 0 && (
+        <section className="space-y-2 rounded-xl border-2 border-dashed border-amber-300 p-3">
+          <h2 className="font-extrabold">👁 معاينة: كده هتظهر المنتجات للعملاء بعد النشر</h2>
+          <ProductGrid products={preview} />
+        </section>
+      )}
 
       <form className="space-y-2">
         <input type="hidden" name="back" value={back} />

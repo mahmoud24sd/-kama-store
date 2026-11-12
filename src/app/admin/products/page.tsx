@@ -66,11 +66,20 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
       {sp.msg && <p className={ui.alertOk}>{sp.msg}</p>}
       {noFilesTable && <p className={ui.alertError}>شغّل ملف supabase/migrations/020_product_files.sql في Supabase عشان تظهر الملفات والمهملات.</p>}
 
-      {files.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="font-extrabold">الملفات ({files.length})</h2>
+      {files.some((f) => !f.is_public) && (
+        <section className="space-y-2 rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
+          <h2 className="font-extrabold">📝 المسودات: ملفات بانتظار النشر ({files.filter((f) => !f.is_public).length})</h2>
+          <p className="text-xs text-gray-600">افتح الملف تشوف المنتجات بشكلها قبل النشر، وبعدين اضغط «نشر للعلن».</p>
           <div className="grid gap-3 lg:grid-cols-2">
-            {files.map((f) => <FileBar key={f.id} f={f} back="/admin/products" canTrash={canProducts} />)}
+            {files.filter((f) => !f.is_public).map((f) => <FileBar key={f.id} f={f} back="/admin/products" canTrash={canProducts} />)}
+          </div>
+        </section>
+      )}
+      {files.some((f) => f.is_public) && (
+        <section className="space-y-2">
+          <h2 className="font-extrabold">✅ ملفات منشورة ({files.filter((f) => f.is_public).length})</h2>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {files.filter((f) => f.is_public).map((f) => <FileBar key={f.id} f={f} back="/admin/products" canTrash={canProducts} />)}
           </div>
         </section>
       )}

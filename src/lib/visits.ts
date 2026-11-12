@@ -1,16 +1,14 @@
-import { cache } from 'react';
 import { unstable_rethrow } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** عدد الزيارات الحالي. يرجع null لو الإعداد غير جاهز (لا يُسبب خطأ أبدًا) */
-export const getVisitCount = cache(async (): Promise<number | null> => {
+/** عدد الزيارات للأدمن المصرّح لهم فقط (الدالة في قاعدة البيانات تتحقق من الصلاحية). ترجع null عند أي مشكلة ولا تُسبب خطأ */
+export async function getAdminVisitCount(supabase: SupabaseClient): Promise<number | null> {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc('get_visits');
+    const { data, error } = await supabase.rpc('admin_visits');
     if (error || data === null || data === undefined) return null;
     return Number(data);
   } catch (e) {
     unstable_rethrow(e);
     return null;
   }
-});
+}

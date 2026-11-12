@@ -3,11 +3,10 @@ import { Facebook, Instagram, Mail, MessageCircle, Phone } from 'lucide-react';
 import Logo from './Logo';
 import { TikTokIcon } from './SocialIcons';
 import { getContactSettings, whatsappLink } from '@/lib/settings';
-import { getVisitCount } from '@/lib/visits';
-import VisitCounter from './VisitCounter';
+import VisitTracker from './VisitCounter';
 
 export default async function Footer() {
-  const [c, visits] = await Promise.all([getContactSettings(), getVisitCount()]);
+  const c = await getContactSettings();
   const { email, phone, facebook, instagram, tiktok } = c;
   const whatsapp = c.whatsapp ? whatsappLink(c.whatsapp) : '';
   const hasContact = Boolean(email || phone || whatsapp || facebook || instagram || tiktok);
@@ -115,7 +114,7 @@ export default async function Footer() {
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-white/10 py-4 text-center text-xs text-gray-400">
           <span>© {new Date().getFullYear()} Kama Store. جميع الحقوق محفوظة.</span>
           <span className="text-xs text-gray-500">كمشارك في برنامج أمازون للتسويق بالعمولة، نحصل على عمولة من المشتريات المؤهلة.</span>
-          <VisitCounter initial={visits} />
+          <VisitTracker />
         </div>
       </div>
     </footer>

@@ -4,6 +4,7 @@ import { BarChart3, Boxes, KeyRound, Link2, Layers, Megaphone, MessageCircle, Pa
 import { requireAdmin } from '@/lib/auth';
 import ChatAlert from '@/components/chat/ChatAlert';
 import AutoRefresh from '@/components/chat/AutoRefresh';
+import { getAdminVisitCount } from '@/lib/visits';
 import { hasPermission, type Permission } from '@/lib/permissions';
 
 export const metadata: Metadata = { title: { default: 'لوحة التحكم', template: '%s | إدارة Kama Store' } };
@@ -36,6 +37,7 @@ const LINKS: NavLink[] = [
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // حماية على السيرفر: غير الموظف يُعاد توجيهه (إضافة إلى middleware و RLS)
   const { profile, supabase } = await requireAdmin();
+  const visits = hasPermission(profile, 'visits') ? await getAdminVisitCount(supabase) : null;
   let pendingResets = 0;
   if (hasPermission(profile, 'temp_password')) {
     try {
@@ -60,6 +62,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ))}
       </nav>
       <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
+        {visits !== null && (
+          <p className="mb-3 text-sm text-gray-600">👁 عدد زيارات الموقع: <b dir="ltr">{visits.toLocaleString('en-US')}</b></p>
+        )}
         {hasPermission(profile, 'temp_password') && <AutoRefresh seconds={30} />}
         {hasPermission(profile, 'chat') && <ChatAlert />}
         {pendingResets > 0 && (

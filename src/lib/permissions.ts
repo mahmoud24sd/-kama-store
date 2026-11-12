@@ -21,6 +21,7 @@ export const PERMISSIONS = [
   { key: 'telegram_import', label: 'استيراد من تليجرام' },
   { key: 'sources', label: 'ربط المتاجر' },
   { key: 'settings', label: 'إعدادات التواصل' },
+  { key: 'visits', label: 'عدد الزيارات' },
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number]['key'];

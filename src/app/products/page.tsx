@@ -96,16 +96,27 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
         {result.pages > 1 && (
           <nav className="mt-6 flex flex-wrap justify-center gap-1.5" aria-label="الصفحات">
-            {Array.from({ length: result.pages }, (_, i) => i + 1).map((n) => (
-              <Link
-                key={n}
-                href={buildHref({ page: n === 1 ? undefined : String(n) })}
-                aria-current={n === result.page ? 'page' : undefined}
-                className={`flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-sm ${n === result.page ? 'border-brand-700 bg-brand-800 text-white' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
-              >
-                {n}
-              </Link>
-            ))}
+            {(() => {
+              const start = Math.floor((result.page - 1) / 10) * 10 + 1;
+              const end = Math.min(start + 9, result.pages);
+              const box = 'flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-sm border-gray-300 bg-white hover:bg-gray-50';
+              return (
+                <>
+                  {start > 1 && <Link href={buildHref({ page: String(start - 1) })} className={box} aria-label="الصفحات السابقة">«</Link>}
+                  {Array.from({ length: end - start + 1 }, (_, i) => start + i).map((n) => (
+                    <Link
+                      key={n}
+                      href={buildHref({ page: n === 1 ? undefined : String(n) })}
+                      aria-current={n === result.page ? 'page' : undefined}
+                      className={`flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-sm ${n === result.page ? 'border-brand-700 bg-brand-800 text-white' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+                    >
+                      {n}
+                    </Link>
+                  ))}
+                  {end < result.pages && <Link href={buildHref({ page: String(end + 1) })} className={box} aria-label="الصفحات التالية">»</Link>}
+                </>
+              );
+            })()}
           </nav>
         )}
       </section>

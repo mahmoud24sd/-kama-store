@@ -39,12 +39,14 @@ export default async function ScreenshotsPage() {
     const paths = rows.map((r) => r.screenshot_path as string);
     if (paths.length) {
       const { data: signed } = await db.storage.from('payment-screenshots').createSignedUrls(paths, 3600);
-      urls = new Map((signed ?? []).filter((s) => s.path && s.signedUrl).map((s) => [s.path as string, s.signedUrl]));
+      urls = new Map<string, string>();
+      for (const s of signed ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
     }
     const ids = [...new Set(rows.map((r) => r.user_id))];
     if (ids.length) {
       const { data: profs } = await db.from('profiles').select('id,full_name,phone').in('id', ids);
-      names = new Map((profs ?? []).map((p) => [p.id as string, `${p.full_name ?? ''} ${p.phone ?? ''}`.trim()]));
+      names = new Map<string, string>();
+      for (const p of profs ?? []) names.set(p.id as string, `${p.full_name ?? ''} ${p.phone ?? ''}`.trim());
     }
   }
 

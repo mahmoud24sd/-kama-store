@@ -158,9 +158,14 @@ export async function submitPublishRequest(formData: FormData) {
     payment_ref: parsed.data!.payment_ref,
     sender_phone: parsed.data!.sender_phone || null,
   };
-  let { error } = await db.from('publish_requests').insert({ ...row, screenshot_path: shotPath });
-  if (error && error.code !== '23505') ({ error } = await db.from('publish_requests').insert(row));
-  if (error) fail(back, error.code === '23505' ? 'رقم العملية هذا مستخدم من قبل' : 'تعذر إرسال الطلب. تأكد من تشغيل ملف migrations/003');
+  const first = await db.from('publish_requests').insert({ ...row, screenshot_path: shotPath });
+  let insertError = first.error;
+  // لو عمود screenshot_path مش موجود (ملف 019 لسه ما اتشغّلش) نحاول من غيره
+  if (insertError && insertError.code !== '23505') {
+    const retry = await db.from('publish_requests').insert(row);
+    insertError = retry.error;
+  }
+  if (insertError) fail(back, insertError.code === '23505' ? 'رقم العملية هذا مستخدم من قبل' : 'تعذر إرسال الطلب. تأكد من تشغيل ملف migrations/003');
 
   await db.from('products').update({ status: 'pending' }).eq('id', productId.data).eq('seller_id', user.id);
   revalidatePath('/sell');

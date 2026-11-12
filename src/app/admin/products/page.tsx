@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { bulkPublish, bulkDraft, bulkTrash } from '@/app/actions/productFiles';
+import FolderCard from '@/components/admin/FolderCard';
 import SelectAll from '@/components/admin/SelectAll';
+import { loadFolders } from '@/lib/folders';
+import { getCategories } from '@/lib/queries';
 import { hasPermission } from '@/lib/permissions';
 import { requireAdmin } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -22,7 +25,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
 
   const term = sp.q?.replace(/[,()%_\\*]/g, ' ').trim();
-  const build = (withDeleted: boolean) => {
+  const build = (withDeleted: boolean, loose: boolean) => {
     let q = supabase
       .from('products')
       .select('*, product_images(id,url,sort_order), categories(name,slug), product_variants(id,product_id,color,size,price_override,stock,sku)')
@@ -30,14 +33,18 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
       .order('created_at', { ascending: false })
       .limit(1000);
     if (withDeleted) q = q.is('deleted_at', null);
+    if (loose) q = q.is('file_id', null);
     if (term) q = q.ilike('name', `%${term}%`);
     return q;
   };
-  let res = await build(true);
-  if (res.error) res = await build(false); // قبل تشغيل ملف 020
+  let res = await build(true, !term); // من غير بحث: المنتجات اللي برّه الفولدرات بس
+  if (res.error) res = await build(false, false); // قبل تشغيل ملفات 020/024
   const products = (res.data ?? []) as unknown as Row[];
 
   const fileName = new Map<string, string>();
+  const folders = term ? [] : (await loadFolders(supabase, 'public')).folders;
+  const cats = folders.length > 0 ? await getCategories() : [];
+  const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
 
   const { data: pubs } = await supabase.from('profiles').select('id,full_name,email').in('id', [...new Set(products.map((p) => (p as unknown as { published_by?: string }).published_by).filter(Boolean) as string[])].slice(0, 200));
   const pubName = new Map((pubs ?? []).map((u) => [u.id as string, (u.full_name as string) || (u.email as string) || '']));
@@ -54,6 +61,17 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
       </div>
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
       {sp.msg && <p className={ui.alertOk}>{sp.msg}</p>}
+
+      {folders.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-extrabold">📁 الفولدرات المنشورة ({folders.length})</h2>
+          <p className="text-xs text-gray-600">افتح الفولدر تشوف المنتجات، وعدّل القسم والعلامة والمحل والسعر لكلها مرة واحدة.</p>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {folders.map((f) => <FolderCard key={f.id} f={f} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} />)}
+          </div>
+        </section>
+      )}
+      {folders.length > 0 && <h2 className="font-extrabold">منتجات برّه الفولدرات ({products.length})</h2>}
 
       <form className="flex gap-2" role="search">
         <input name="q" defaultValue={sp.q} placeholder="ابحث بالاسم..." className={ui.input} />

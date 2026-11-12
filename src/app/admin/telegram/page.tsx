@@ -60,7 +60,7 @@ export default async function TelegramBotPage({ searchParams }: { searchParams: 
       ) : (
         <section className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
           <p className="font-bold">البوت لسه مش مضبوط.</p>
-          <p>{isOwner ? 'ضيف TELEGRAM_BOT_TOKEN في Vercel (من https://t.me/BotFather) ثم اعمل Redeploy.' : 'اطلب من المالك يكمّل إعداد البوت.'}</p>
+          <p>{!isOwner ? 'اطلب من المالك يكمّل إعداد البوت.' : (process.env.TELEGRAM_BOT_TOKEN ?? '').trim() ? `الموقع شايف التوكن (أول 6 أرقام: ${(process.env.TELEGRAM_BOT_TOKEN ?? '').trim().slice(0, 6)}) لكن تليجرام رفضه. غالباً التوكن قديم/ملغي أو منسوخ ناقص. هات توكن جديد من BotFather (/revoke) والصقه كامل ثم Redeploy.` : 'الموقع مش شايف TELEGRAM_BOT_TOKEN. اتأكد إنه Production واعمل Redeploy.'}</p>
         </section>
       )}
 

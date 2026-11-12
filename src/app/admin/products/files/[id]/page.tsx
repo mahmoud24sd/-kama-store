@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { bulkProducts } from '@/app/actions/productFiles';
+import { bulkPublish, bulkDraft, bulkTrash } from '@/app/actions/productFiles';
 import FileBar, { type FileRow } from '@/components/admin/FileBar';
 import SelectAll from '@/components/admin/SelectAll';
 import { requireAdmin } from '@/lib/auth';
@@ -61,9 +61,9 @@ export default async function FilePage({ params, searchParams }: { params: Promi
         <input type="hidden" name="back" value={back} />
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2 text-sm">
           <span className="font-bold">المحدّد:</span>
-          <button formAction={bulkProducts} name="op" value="publish" className={ui.btnPrimary}>نشر للعلن</button>
-          <button formAction={bulkProducts} name="op" value="draft" className={ui.btnOutline}>حفظ كمسودة</button>
-          {canProducts && <button formAction={bulkProducts} name="op" value="trash" className={ui.btnDanger}>حذف (للمهملات)</button>}
+          <button formAction={bulkPublish} className={ui.btnPrimary}>نشر للعلن</button>
+          <button formAction={bulkDraft} className={ui.btnOutline}>حفظ كمسودة</button>
+          {canProducts && <button formAction={bulkTrash} className={ui.btnDanger}>حذف (للمهملات)</button>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">

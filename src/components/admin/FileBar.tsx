@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { saveFileMarkup, setFileVisibility, trashFile } from '@/app/actions/productFiles';
+import { saveFileMarkup, publishFile, draftFile, trashFile } from '@/app/actions/productFiles';
 import { ui } from '@/lib/ui';
 
 export type FileRow = { id: string; name: string; source: string; markup: number; is_public: boolean; created_at: string; count: number };
@@ -32,14 +32,10 @@ export default function FileBar({ f, back, canTrash = true, detail = false }: { 
           </div>
           <button className={ui.btnOutline}>تعديل</button>
         </form>
-        <form action={setFileVisibility}>
+        <form action={f.is_public ? draftFile : publishFile}>
           <input type="hidden" name="id" value={f.id} />
           <input type="hidden" name="back" value={back} />
-          {f.is_public ? (
-            <button name="op" value="draft" className={ui.btnOutline}>حفظ كمسودة</button>
-          ) : (
-            <button name="op" value="public" className={ui.btnPrimary}>نشر للعلن</button>
-          )}
+          <button className={f.is_public ? ui.btnOutline : ui.btnPrimary}>{f.is_public ? 'حفظ كمسودة' : 'نشر للعلن'}</button>
         </form>
         {canTrash && (
           <form action={trashFile}>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
-import { bulkProducts } from '@/app/actions/productFiles';
+import { bulkPublish, bulkDraft, bulkTrash } from '@/app/actions/productFiles';
 import FileBar, { type FileRow } from '@/components/admin/FileBar';
 import SelectAll from '@/components/admin/SelectAll';
 import { hasPermission } from '@/lib/permissions';
@@ -96,9 +96,9 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
           <input type="hidden" name="back" value="/admin/products" />
           <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2 text-sm">
             <span className="font-bold">المحدّد:</span>
-            <button formAction={bulkProducts} name="op" value="publish" className={ui.btnPrimary}>نشر للعلن</button>
-            <button formAction={bulkProducts} name="op" value="draft" className={ui.btnOutline}>حفظ كمسودة</button>
-            {canProducts && <button formAction={bulkProducts} name="op" value="trash" className={ui.btnDanger}>حذف (للمهملات)</button>}
+            <button formAction={bulkPublish} className={ui.btnPrimary}>نشر للعلن</button>
+            <button formAction={bulkDraft} className={ui.btnOutline}>حفظ كمسودة</button>
+            {canProducts && <button formAction={bulkTrash} className={ui.btnDanger}>حذف (للمهملات)</button>}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { bulkProducts, emptyTrash, purgeFile, restoreFile } from '@/app/actions/productFiles';
+import { bulkRestore, bulkPurge, emptyTrash, purgeFile, restoreFile } from '@/app/actions/productFiles';
 import SelectAll from '@/components/admin/SelectAll';
 import { requirePermission } from '@/lib/auth';
 import { formatPrice } from '@/lib/utils';
@@ -53,8 +53,8 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
           <h2 className="font-bold">منتجات محذوفة</h2>
           <div className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2 text-sm">
             <span className="font-bold">المحدّد:</span>
-            <button formAction={bulkProducts} name="op" value="restore" className={ui.btnOutline}>استرجاع</button>
-            <button formAction={bulkProducts} name="op" value="purge" className={ui.btnDanger}>حذف نهائي</button>
+            <button formAction={bulkRestore} className={ui.btnOutline}>استرجاع</button>
+            <button formAction={bulkPurge} className={ui.btnDanger}>حذف نهائي</button>
           </div>
           <table className="w-full">
             <thead><tr className="border-b border-gray-200"><th className={ui.th}><SelectAll /></th><th className={ui.th}>المنتج</th><th className={ui.th}>السعر</th><th className={ui.th}>اتحذف</th></tr></thead>

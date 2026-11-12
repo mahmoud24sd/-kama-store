@@ -37,10 +37,9 @@ export async function saveFileMarkup(formData: FormData) {
 }
 
 /** نشر الملف للعلن (كمجموعة ومنتجات) أو إرجاعه مسودة */
-export async function setFileVisibility(formData: FormData) {
+async function setVisibility(formData: FormData, pub: boolean) {
   const { supabase, profile } = await ctx(canFiles);
   const id = fileId(formData);
-  const pub = formData.get('op') === 'public';
   if (!id.success) return back(where(formData));
   await supabase.from('product_files').update({ is_public: pub }).eq('id', id.data);
   await supabase.from('products').update({ is_active: pub }).eq('file_id', id.data).is('deleted_at', null);
@@ -49,6 +48,13 @@ export async function setFileVisibility(formData: FormData) {
     await supabase.from('products').update({ published_by: profile.id, published_at: now }).eq('file_id', id.data).is('deleted_at', null);
   }
   return back(where(formData), pub ? 'الملف ظاهر للعلن دلوقتي' : 'الملف رجع مسودة (مخفي)');
+}
+
+export async function publishFile(formData: FormData) {
+  return setVisibility(formData, true);
+}
+export async function draftFile(formData: FormData) {
+  return setVisibility(formData, false);
 }
 
 /** حذف الملف كله = نقله للمهملات (يختفي من الموقع ويمكن استرجاعه) */
@@ -93,8 +99,7 @@ export async function purgeFile(formData: FormData) {
 }
 
 /** إجراء جماعي على منتجات محددة: publish | draft | trash | restore | purge */
-export async function bulkProducts(formData: FormData) {
-  const op = String(formData.get('op') ?? '');
+async function runBulk(formData: FormData, op: string) {
   const need: Permission[] = op === 'publish' || op === 'draft' ? canFiles : ['products'];
   const { supabase, profile } = await ctx(need);
   const to = where(formData);
@@ -123,6 +128,12 @@ export async function bulkProducts(formData: FormData) {
   }
   return back(to);
 }
+
+export async function bulkPublish(formData: FormData) { return runBulk(formData, 'publish'); }
+export async function bulkDraft(formData: FormData) { return runBulk(formData, 'draft'); }
+export async function bulkTrash(formData: FormData) { return runBulk(formData, 'trash'); }
+export async function bulkRestore(formData: FormData) { return runBulk(formData, 'restore'); }
+export async function bulkPurge(formData: FormData) { return runBulk(formData, 'purge'); }
 
 /** تفريغ المهملات بالكامل (حذف نهائي) */
 export async function emptyTrash() {

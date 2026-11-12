@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // ما نكشفش خرائط المصدر للمتصفح (تخلّي الكود المصغّر صعب القراءة) ولا نعلن إن الموقع Next.js
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
   // رفع صور المنتجات من لوحة الإدارة يتم عبر Server Actions
   experimental: {
     serverActions: { bodySizeLimit: '12mb' },

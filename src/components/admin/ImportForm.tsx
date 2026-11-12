@@ -9,19 +9,8 @@ export default function ImportForm() {
   return (
     <form action={action} className="space-y-4">
       <div>
-        <label htmlFor="text" className={ui.label}>الصق الجدول هنا (انسخه من Excel أو Google Sheets مع صف العناوين)</label>
-        <textarea
-          id="text"
-          name="text"
-          rows={10}
-          dir="auto"
-          placeholder={'name\tprice\tstock\tcategory\timage_urls\tpublish\nتيشيرت قطن\t199\t20\tأزياء\thttps://example.com/1.jpg\tyes'}
-          className={`${ui.input} font-mono`}
-        />
-      </div>
-      <div>
-        <label className={ui.label} htmlFor="file">أو ارفع ملف: إكسل (xlsx) / CSV / JSON</label>
-        <input id="file" type="file" name="file" accept=".xlsx,.csv,.json,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="mt-2 block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-brand-800 file:px-4 file:py-2 file:text-white" />
+        <label className={ui.label} htmlFor="file">ارفع الملف: إكسل (xlsx) / CSV / JSON</label>
+        <input id="file" type="file" name="file" required accept=".xlsx,.csv,.json,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="mt-2 block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-brand-800 file:px-4 file:py-2 file:text-white" />
       </div>
       <div>
         <label className={ui.label} htmlFor="mode">حالة المنتجات بعد الاستيراد</label>

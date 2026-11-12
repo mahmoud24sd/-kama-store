@@ -15,6 +15,7 @@ const LINKS: NavLink[] = [
   { href: '/admin', label: 'الإحصائيات', icon: BarChart3, perm: 'dashboard' },
   { href: '/admin/orders', label: 'الطلبات', icon: ShoppingBag, perm: 'orders' },
   { href: '/admin/products', label: 'المنتجات', icon: Package, perm: 'products' },
+  { href: '/admin/trash', label: 'المهملات', icon: Package, perm: 'products' },
   { href: '/admin/categories', label: 'الأقسام', icon: Layers, perm: 'categories' },
   { href: '/admin/inventory', label: 'المخزون', icon: Boxes, perm: 'inventory' },
   { href: '/admin/offers', label: 'العروض', icon: Percent, perm: 'offers' },
@@ -48,7 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       pendingResets = 0;
     }
   }
-  const links = LINKS.filter((l) => (l.owner ? profile.role === 'owner' : l.perm ? hasPermission(profile, l.perm) : true));
+  const links = LINKS.filter((l) => (l.owner ? profile.role === 'owner' : l.perm ? hasPermission(profile, l.perm) || (l.perm === 'products' && l.href === '/admin/products' && hasPermission(profile, 'bot_publish')) : true));
   return (
     <div className="grid gap-4 md:grid-cols-[13rem_1fr]">
       <nav aria-label="لوحة التحكم" className="flex gap-1 overflow-x-auto rounded-xl bg-white p-2 shadow-sm md:flex-col md:self-start">

@@ -197,13 +197,14 @@ export async function deleteProduct(formData: FormData) {
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
 
-  const { data: imgs } = await supabase.from('product_images').select('url').eq('product_id', id.data);
-  const paths = (imgs ?? []).map((i) => storagePathFromUrl(i.url as string)).filter((p): p is string => Boolean(p));
-  if (paths.length > 0) await supabase.storage.from(BUCKET).remove(paths);
-
-  await supabase.from('products').delete().eq('id', id.data);
+  // الحذف ينقل المنتج لسلة المهملات (يمكن استرجاعه). الحذف النهائي من صفحة المهملات
+  const { error } = await supabase.from('products').update({ deleted_at: new Date().toISOString(), is_active: false }).eq('id', id.data);
+  if (error) {
+    // لو ملف 020 لسه ما اتشغّلش: اخفاء المنتج بدل حذفه
+    await supabase.from('products').update({ is_active: false }).eq('id', id.data);
+  }
   revalidatePath('/', 'layout');
-  redirect('/admin/products');
+  redirect('/admin/products?msg=' + encodeURIComponent('اتنقل المنتج للمهملات'));
 }
 
 /* ───────────────────────── الأقسام ───────────────────────── */

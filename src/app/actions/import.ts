@@ -2,10 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { assertPermission } from '@/lib/auth';
-import { parseCsv } from '@/lib/csv';
+import { readTable } from '@/lib/importFile';
 import { slugify } from '@/lib/utils';
 
-export type ImportState = { created?: number; failed?: number; errors?: string[]; message?: string };
+export type ImportState = { created?: number; failed?: number; errors?: string[]; message?: string; fileId?: string; noImages?: number };
 
 const MAX_ROWS = 500;
 const BATCH = 50;
@@ -24,7 +24,7 @@ const ALIASES: Record<string, string[]> = {
   cost_price: ['cost_price', 'سعر التكلفة', 'التكلفة'],
   supplier: ['supplier', 'المورد'],
   private_notes: ['private_notes', 'ملاحظات خاصة', 'تفاصيل خاصة'],
-  image_urls: ['image_urls', 'images', 'روابط الصور', 'الصور'],
+  image_urls: ['image_urls', 'images', 'image', 'image_url', 'imageurl', 'photo', 'photos', 'picture', 'pictures', 'img', 'روابط الصور', 'رابط الصورة', 'رابط صورة', 'الصور', 'الصورة', 'صورة', 'صور'],
   publish: ['publish', 'نشر', 'ظاهر'],
   affiliate_url: ['affiliate_url', 'رابط أمازون', 'رابط الأفيليت', 'amazon_url'],
   asin: ['asin', 'external_id'],
@@ -41,17 +41,25 @@ function num(v: string | undefined): number | null {
 export async function importProducts(_prev: ImportState, formData: FormData): Promise<ImportState> {
   const { supabase, profile } = await assertPermission('products');
 
-  // إما نص ملصوق من Excel / Google Sheets، أو ملف CSV
+  // إما نص ملصوق من Excel / Google Sheets، أو ملف (إكسل .xlsx أو CSV أو JSON)
   const pasted = String(formData.get('text') ?? '').trim();
   const file = formData.get('file');
-  let content = pasted;
-  if (!content) {
-    if (!(file instanceof File) || file.size === 0) return { message: 'الصق الجدول في الخانة أو اختر ملف CSV' };
-    if (file.size > 3 * 1024 * 1024) return { message: 'الملف أكبر من 3 ميجابايت' };
-    content = await file.text();
-  } else if (content.length > 3 * 1024 * 1024) return { message: 'النص أكبر من 3 ميجابايت' };
-
-  const rows = parseCsv(content);
+  let rows: string[][];
+  let fileName = `ملصوق ${new Date().toLocaleDateString('en-GB')}`;
+  try {
+    if (pasted) {
+      if (pasted.length > 3 * 1024 * 1024) return { message: 'النص أكبر من 3 ميجابايت' };
+      rows = (await readTable(pasted)).rows;
+    } else {
+      if (!(file instanceof File) || file.size === 0) return { message: 'الصق الجدول في الخانة أو اختر ملف إكسل / CSV / JSON' };
+      if (file.size > 8 * 1024 * 1024) return { message: 'الملف أكبر من 8 ميجابايت' };
+      rows = (await readTable(file)).rows;
+      fileName = (file.name || fileName).replace(/\.(xlsx|csv|json|txt)$/i, '').slice(0, 120) || fileName;
+    }
+  } catch (e) {
+    return { message: e instanceof Error && e.message ? `تعذّر قراءة الملف: ${e.message}` : 'تعذّر قراءة الملف. اتأكد إنه إكسل (xlsx) أو CSV أو JSON سليم.' };
+  }
+  const mode = String(formData.get('mode') ?? 'csv');
   if (rows.length < 2) return { message: 'الملف فارغ أو بدون صفوف منتجات' };
   if (rows.length - 1 > MAX_ROWS) return { message: `الحد الأقصى ${MAX_ROWS} منتج في الملف الواحد. قسّم الملف.` };
 
@@ -95,8 +103,8 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     if (catName && !catMap.has(catName)) return void errors.push(`سطر ${line} (${name}): القسم «${get(r, 'category')}» غير موجود، أنشئه أولًا من صفحة الأقسام`);
 
     const images = (get(r, 'image_urls') ?? '')
-      .split(/[|\n\s]+/)
-      .map((u) => u.trim())
+      .split(/[|\n\s,;،]+/)
+      .map((u) => u.trim().replace(/^<|>$/g, '').replace(/^http:\/\//i, 'https://'))
       .filter(Boolean);
     for (const u of images) {
       try {
@@ -122,7 +130,7 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
     }
     const asin = (get(r, 'asin') ?? '').toUpperCase().slice(0, 20);
 
-    const publish = YES.includes((get(r, 'publish') ?? '').toLowerCase());
+    const publish = mode === 'public' ? true : mode === 'draft' ? false : YES.includes((get(r, 'publish') ?? '').toLowerCase());
     const shop = get(r, 'shop_name');
     // التفاصيل العامة: كل خاصية في سطر، أو افصل بينها بالعلامة |
     const details = (get(r, 'details') ?? '').replace(/\s*\|\s*/g, '\n').trim().slice(0, 5000);
@@ -148,6 +156,31 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
       },
     });
   });
+
+  // الملف نفسه = مجموعة. الزيادة = الفرق الأكثر تكرارًا بين السعر وسعر التكلفة (لو الملف جاي من البوت)
+  const diffs = valid.map((c) => (c.priv?.cost_price != null && Number(c.row.price) >= c.priv.cost_price ? Number(c.row.price) - c.priv.cost_price : null)).filter((d): d is number => d !== null && d > 0);
+  const freq = new Map<number, number>();
+  for (const d of diffs) freq.set(d, (freq.get(d) ?? 0) + 1);
+  const markup = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+  let fileId: string | null = null;
+  if (valid.length > 0) {
+    const { data: pf } = await supabase
+      .from('product_files')
+      .insert({ name: fileName, source: 'import', markup, is_public: mode === 'public', created_by: profile.id })
+      .select('id')
+      .single();
+    fileId = (pf?.id as string | undefined) ?? null;
+    if (fileId) {
+      for (const c of valid) {
+        const cost = c.priv?.cost_price;
+        c.row.file_id = fileId;
+        c.row.base_price = cost != null && cost <= Number(c.row.price) ? cost : Math.max(Number(c.row.price) - markup, 0);
+      }
+    } else {
+      errors.push('المنتجات اتحفظت لكن من غير «ملف» لأن ملف supabase/migrations/020_product_files.sql لسه ما اتشغّلش.');
+    }
+  }
+  const noImages = valid.filter((c) => c.images.length === 0).length;
 
   let created = 0;
   for (let i = 0; i < valid.length; i += BATCH) {
@@ -186,5 +219,5 @@ export async function importProducts(_prev: ImportState, formData: FormData): Pr
   }
 
   revalidatePath('/', 'layout');
-  return { created, failed: rows.length - 1 - created, errors: errors.slice(0, 100) };
+  return { created, failed: rows.length - 1 - created, errors: errors.slice(0, 100), fileId: fileId ?? undefined, noImages };
 }

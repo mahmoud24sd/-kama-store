@@ -3,6 +3,9 @@ import { after, NextResponse } from 'next/server';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { csvRow, parseCaption, withMarkup } from '@/lib/telegramParse';
 import { claimMatches } from '@/lib/telegramClaim';
+import { getSiteUrl } from '@/lib/site';
+import { slugify } from '@/lib/utils';
+import { writeXlsx } from '@/lib/xlsx';
 import { channelFromLink, fetchChannelPage, groupPosts } from '@/lib/tmeScrape';
 
 export const dynamic = 'force-dynamic';
@@ -39,13 +42,16 @@ async function tg(method: string, body: Record<string, unknown>) {
 }
 const say = (chat: number, text: string) => tg('sendMessage', { chat_id: chat, text }).catch(() => null);
 
-async function sendCsv(chat: number, csv: string, filename: string, caption: string) {
+async function sendDoc(chat: number, data: Buffer | string, filename: string, mime: string, caption: string) {
   const form = new FormData();
   form.append('chat_id', String(chat));
   form.append('caption', caption);
-  form.append('document', new Blob(['﻿' + csv], { type: 'text/csv' }), filename);
-  await fetch(`https://api.telegram.org/bot${TOKEN()}/sendDocument`, { method: 'POST', body: form, signal: AbortSignal.timeout(30000) });
+  form.append('document', new Blob([typeof data === 'string' ? data : new Uint8Array(data)], { type: mime }), filename);
+  await fetch(`https://api.telegram.org/bot${TOKEN()}/sendDocument`, { method: 'POST', body: form, signal: AbortSignal.timeout(40000) });
 }
+
+const keyboard = (chat: number, text: string, rows: { text: string; data: string }[][]) =>
+  tg('sendMessage', { chat_id: chat, text, reply_markup: { inline_keyboard: rows.map((r) => r.map((b) => ({ text: b.text, callback_data: b.data }))) } }).catch(() => null);
 
 type Db = ReturnType<typeof createAdminClient>;
 
@@ -130,7 +136,11 @@ async function runJob(db: Db, by: number) {
   }
   if (finished) {
     await db.from('telegram_state').delete().eq('key', `job:${by}`);
-    await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (فيه اسم وسعر وصورة).\nاكتب /export عشان تاخد ملف إكسل.`);
+    await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (فيه اسم وسعر وصورة).`);
+    if (job.collected > 0) {
+      await uploadToSite(db, job.chat, by, false).catch(() => null);
+      await keyboard(job.chat, 'وتقدر كمان تاخد ملف:', [[{ text: '📊 إكسل', data: 'exp:all:xlsx' }, { text: '🧾 JSON', data: 'exp:all:json' }]]);
+    }
   } else {
     await setState(db, `job:${by}`, JSON.stringify(job));
     await say(job.chat, `لسه شغّال على @${job.channel}: اتحفظ ${job.collected} لحد دلوقتي. اكتب /continue عشان يكمل.`);
@@ -193,6 +203,112 @@ async function getAdmins(db: Db): Promise<string[]> {
   }
 }
 
+
+const CHUNK = 500; // أقصى عدد منتجات في الملف الواحد
+type Fmt = 'xlsx' | 'json' | 'csv';
+const COLS = HEADER.split(',');
+
+async function readyItems(db: Db, by: number, all: boolean) {
+  let q = db.from('telegram_items').select('*').eq('added_by', by).order('created_at', { ascending: true }).limit(5000);
+  if (!all) q = q.is('exported_at', null);
+  const { data } = await q;
+  const items = data ?? [];
+  const markup = Number(await getState(db, 'markup', '0'));
+  const fixed = Number(await getState(db, 'fixed', '0'));
+  const category = await getState(db, 'category', '');
+  const publish = (await getState(db, 'publish', 'no')) === 'yes';
+  const ready = items.filter((i) => i.price != null && i.name && (i.images as string[]).length > 0);
+  return { ready, skipped: items.length - ready.length, markup, fixed, category, publish };
+}
+
+const noteOf = (i: Record<string, unknown>) =>
+  `السعر الأصلي: ${i.price} · المصدر: ${i.source ?? ''}${i.posted_at ? ' · ' + new Date(i.posted_at as string).toLocaleDateString('en-GB') : ''}${i.post_url ? ' · ' + i.post_url : ''}`;
+
+function buildFile(chunk: Record<string, unknown>[], st: { markup: number; fixed: number; category: string; publish: boolean }, fmt: Fmt): { data: Buffer | string; ext: string; mime: string } {
+  const objs = chunk.map((i) => ({
+    name: i.name as string,
+    price: withMarkup(Number(i.price), st.markup) + st.fixed,
+    compare_at_price: '',
+    stock: 10,
+    category: st.category,
+    brand: '',
+    shop_name: '',
+    description: (i.description as string) ?? '',
+    details: '',
+    image_urls: i.images as string[],
+    publish: st.publish ? 'yes' : '',
+    cost_price: Number(i.price),
+    supplier: (i.source as string) ?? '',
+    private_notes: noteOf(i),
+    affiliate_url: '',
+    asin: '',
+  }));
+  if (fmt === 'json') return { data: JSON.stringify(objs, null, 2), ext: 'json', mime: 'application/json' };
+  if (fmt === 'xlsx') {
+    const rows = [COLS as (string | number | null)[], ...objs.map((o) => COLS.map((c) => { const v = (o as Record<string, unknown>)[c]; return Array.isArray(v) ? v.join('|') : (v as string | number); }))];
+    return { data: writeXlsx(rows), ext: 'xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+  }
+  const rows = objs.map((o) => csvRow(COLS.map((c) => { const v = (o as Record<string, unknown>)[c]; return Array.isArray(v) ? v.join('|') : v; })));
+  return { data: '﻿' + [HEADER, ...rows].join('\r\n'), ext: 'csv', mime: 'text/csv' };
+}
+
+/** يرسل الملفات (500 منتج كحد أقصى في الملف الواحد) بالصيغة المختارة */
+async function exportFiles(db: Db, chat: number, by: number, all: boolean, fmt: Fmt) {
+  const st = await readyItems(db, by, all);
+  if (st.ready.length === 0) return say(chat, st.skipped > 0 ? `${st.skipped} منتج ناقص (اسم أو سعر أو صورة)، ماتصدّرش.` : 'مفيش منتجات جديدة.');
+  const parts = Math.ceil(st.ready.length / CHUNK);
+  const day = new Date().toISOString().slice(0, 10);
+  for (let k = 0; k < parts; k++) {
+    const chunk = st.ready.slice(k * CHUNK, (k + 1) * CHUNK);
+    const f = buildFile(chunk, st, fmt);
+    await sendDoc(chat, f.data, `products-${day}${parts > 1 ? `-part${k + 1}` : ''}.${f.ext}`, f.mime, `ملف ${k + 1} من ${parts} · ${chunk.length} منتج · زيادة ${st.fixed} جنيه${st.markup ? ` + ${st.markup}%` : ''}`);
+    await db.from('telegram_items').update({ exported_at: new Date().toISOString() }).in('id', chunk.map((i) => i.id as string));
+  }
+  if (st.skipped) await say(chat, `${st.skipped} منتج ناقص (اسم أو سعر أو صورة)، ماتصدّرش.`);
+}
+
+/** يرفع المنتجات للموقع كملفات (500 في الملف) كمسودة، وبجانب كل ملف زر «نشر» */
+async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
+  const st = await readyItems(db, by, all);
+  if (st.ready.length === 0) return say(chat, st.skipped > 0 ? `${st.skipped} منتج ناقص (اسم أو سعر أو صورة)، ماتترفعش.` : 'مفيش منتجات جديدة ترفعها.');
+  let categoryId: string | null = null;
+  if (st.category) {
+    const { data: cats } = await db.from('categories').select('id,name,slug');
+    categoryId = (cats ?? []).find((c) => String(c.name).trim().toLowerCase() === st.category.trim().toLowerCase() || String(c.slug).toLowerCase() === st.category.trim().toLowerCase())?.id ?? null;
+  }
+  const parts = Math.ceil(st.ready.length / CHUNK);
+  const day = new Date().toLocaleDateString('en-GB');
+  for (let k = 0; k < parts; k++) {
+    const chunk = st.ready.slice(k * CHUNK, (k + 1) * CHUNK);
+    const label = `${(chunk[0].source as string) || 'تليجرام'} ${day}${parts > 1 ? ` (${k + 1})` : ''}`;
+    const { data: file, error: fErr } = await db.from('product_files').insert({ name: label, source: 'bot', markup: st.fixed, is_public: false, tg_by: by }).select('id').single();
+    if (fErr || !file) return say(chat, 'ما قدرتش أعمل الملف على الموقع. لازم المالك يشغّل ملف supabase/migrations/020_product_files.sql في Supabase.');
+    let saved = 0;
+    for (let i = 0; i < chunk.length; i += 50) {
+      const part = chunk.slice(i, i + 50);
+      const rows = part.map((it) => {
+        const base = withMarkup(Number(it.price), st.markup);
+        return { name: String(it.name).slice(0, 200), slug: `${slugify(String(it.name)) || 'p'}-${Math.random().toString(36).slice(2, 8)}`, description: (it.description as string) || null, price: base + st.fixed, base_price: base, stock: 10, is_active: false, category_id: categoryId, file_id: file.id as string };
+      });
+      const { data: ins, error } = await db.from('products').insert(rows).select('id,slug');
+      if (error || !ins) continue;
+      const idBySlug = new Map(ins.map((d) => [d.slug as string, d.id as string]));
+      const imgs = part.flatMap((it, n) => { const pid = idBySlug.get(rows[n].slug); return pid ? (it.images as string[]).map((url, o) => ({ product_id: pid, url, sort_order: o })) : []; });
+      if (imgs.length) await db.from('product_images').insert(imgs);
+      const priv = part.flatMap((it, n) => { const pid = idBySlug.get(rows[n].slug); return pid ? [{ product_id: pid, cost_price: Number(it.price), supplier: (it.source as string) || null, notes: noteOf(it) }] : []; });
+      if (priv.length) await db.from('product_private').insert(priv);
+      saved += ins.length;
+      await db.from('telegram_items').update({ exported_at: new Date().toISOString() }).in('id', part.map((x) => x.id as string));
+    }
+    await keyboard(chat, `✅ اترفع للموقع (مسودة): «${label}»\n${saved} منتج · زيادة ${st.fixed} جنيه\nافتحه من: ${getSiteUrl()}/admin/products/files/${file.id}`, [[{ text: 'نشر للعلن ✅', data: `pub:${file.id}` }]]);
+  }
+}
+
+const formatButtons = (all: boolean) => [
+  [{ text: '📊 إكسل', data: `exp:${all ? 'all' : 'new'}:xlsx` }, { text: '🧾 JSON', data: `exp:${all ? 'all' : 'new'}:json` }],
+  [{ text: '🌐 رفع للموقع (مسودة + نشر)', data: `up:${all ? 'all' : 'new'}` }],
+];
+
 async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
   const [cmdRaw, ...rest] = text.trim().split(/\s+/);
   const cmd = cmdRaw.split('@')[0].toLowerCase();
@@ -211,8 +327,9 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         '/channel https://t.me/اسم_القناة 30  ← آخر 30 يوم',
         '/continue  ← كمّل السحب لو وقف',
         '/count  ← كم منتج محفوظ',
-        '/export  ← ملف إكسل بالجديد فقط',
-        '/exportall  ← ملف بكل منتجاتك',
+        '/export  ← ملف بالجديد فقط (تختار إكسل أو JSON أو رفع للموقع)',
+        '/exportall  ← نفس الشيء بكل منتجاتك',
+        '/upload  ← ارفع الجديد للموقع كمسودة',
         ...(isOwner ? ['', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
       ].join('\n'),
     );
@@ -261,24 +378,11 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
   }
   if (cmd === '/export' || cmd === '/exportall') {
     const all = cmd === '/exportall';
-    let q = db.from('telegram_items').select('*').eq('added_by', by).order('created_at', { ascending: true }).limit(2000);
-    if (!all) q = q.is('exported_at', null);
-    const { data } = await q;
-    const items = data ?? [];
-    const markup = Number(await getState(db, 'markup', '0'));
-    const fixed = Number(await getState(db, 'fixed', '0'));
-    const category = await getState(db, 'category', '');
-    const publish = await getState(db, 'publish', 'no');
-    const ready = items.filter((i) => i.price != null && i.name && (i.images as string[]).length > 0);
-    const skipped = items.length - ready.length;
-    if (ready.length === 0) return say(chat, skipped > 0 ? `${skipped} منتج ناقص (اسم أو سعر أو صورة)، ماتصدّرش.` : 'مفيش منتجات جديدة.');
-    const rows = ready.map((i) =>
-      csvRow([i.name, withMarkup(Number(i.price), markup) + fixed, '', 10, category, '', '', i.description ?? '', '', (i.images as string[]).join('|'), publish === 'yes' ? 'yes' : '', i.price, i.source ?? '', `السعر الأصلي: ${i.price} · المصدر: ${i.source ?? ''}${i.posted_at ? ' · ' + new Date(i.posted_at as string).toLocaleDateString('en-GB') : ''}${i.post_url ? ' · ' + i.post_url : ''}`, '', '']),
-    );
-    await sendCsv(chat, [HEADER, ...rows].join('\r\n'), `products-${new Date().toISOString().slice(0, 10)}.csv`, `${ready.length} منتج · زيادة ${fixed} جنيه${markup ? ` + ${markup}%` : ''}${skipped ? ` · ${skipped} ناقص ماتصدّرش` : ''}`);
-    await db.from('telegram_items').update({ exported_at: new Date().toISOString() }).in('id', ready.map((i) => i.id as string));
-    return;
+    const f = arg.toLowerCase();
+    if (f === 'json' || f === 'xlsx' || f === 'excel' || f === 'csv') return exportFiles(db, chat, by, all, f === 'excel' ? 'xlsx' : (f as Fmt));
+    return keyboard(chat, `اختار شكل الملف (الملف الواحد 500 منتج بالكتير):`, formatButtons(all));
   }
+  if (cmd === '/upload') return uploadToSite(db, chat, by, false);
   return say(chat, 'أمر غير معروف. اكتب /help');
 }
 
@@ -292,9 +396,31 @@ export async function POST(req: Request) {
   if (!TOKEN() || !hasServiceRole) return NextResponse.json({ ok: true });
 
   try {
-    const update = (await req.json()) as { message?: TgMsg; channel_post?: TgMsg; my_chat_member?: { chat: TgMsg['chat']; from: { id: number }; new_chat_member?: { status?: string } } };
+    const update = (await req.json()) as { callback_query?: { id: string; from: { id: number }; data?: string; message?: { chat: { id: number } } }; message?: TgMsg; channel_post?: TgMsg; my_chat_member?: { chat: TgMsg['chat']; from: { id: number }; new_chat_member?: { status?: string } } };
     const db = createAdminClient();
     ownerNow = (process.env.TELEGRAM_OWNER_ID ?? '').trim() || (await getState(db, 'owner', ''));
+
+    if (update.callback_query) {
+      const cq = update.callback_query;
+      const uid = String(cq.from.id);
+      const owner = OWNER() !== '' && uid === OWNER();
+      const staff = owner || (await getAdmins(db)).includes(uid);
+      const chatId = cq.message?.chat.id ?? cq.from.id;
+      await tg('answerCallbackQuery', { callback_query_id: cq.id });
+      if (!staff) return NextResponse.json({ ok: true });
+      const [kind, a1, a2] = (cq.data ?? '').split(':');
+      if (kind === 'exp' && (a2 === 'xlsx' || a2 === 'json' || a2 === 'csv')) await exportFiles(db, chatId, cq.from.id, a1 === 'all', a2);
+      else if (kind === 'up') await uploadToSite(db, chatId, cq.from.id, a1 === 'all');
+      else if (kind === 'pub' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) {
+        if (!owner) await say(chatId, 'النشر للمالك من هنا، أو من الموقع لمن عنده صلاحية «نشر المنتجات من بوت تليجرام».');
+        else {
+          await db.from('product_files').update({ is_public: true }).eq('id', a1);
+          await db.from('products').update({ is_active: true, published_at: new Date().toISOString() }).eq('file_id', a1).is('deleted_at', null);
+          await say(chatId, '✅ اتنشر الملف للعلن.');
+        }
+      }
+      return NextResponse.json({ ok: true });
+    }
 
     // إضافة البوت لجروب/قناة: نقبلها فقط لو من أضافه هو المالك أو أدمن البوت، وإلا يغادر فورًا
     if (update.my_chat_member) {

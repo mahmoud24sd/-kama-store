@@ -19,15 +19,25 @@ export default function ImportForm() {
           className={`${ui.input} font-mono`}
         />
       </div>
-      <details className="text-sm">
-        <summary className="cursor-pointer text-gray-600">أو ارفع ملف CSV بدل اللصق</summary>
-        <input type="file" name="file" accept=".csv,text/csv" className="mt-2 block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-brand-800 file:px-4 file:py-2 file:text-white" />
-      </details>
+      <div>
+        <label className={ui.label} htmlFor="file">أو ارفع ملف: إكسل (xlsx) / CSV / JSON</label>
+        <input id="file" type="file" name="file" accept=".xlsx,.csv,.json,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="mt-2 block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-brand-800 file:px-4 file:py-2 file:text-white" />
+      </div>
+      <div>
+        <label className={ui.label} htmlFor="mode">حالة المنتجات بعد الاستيراد</label>
+        <select id="mode" name="mode" defaultValue="draft" className={ui.input}>
+          <option value="draft">حفظ كمسودة (مخفية، أنت تنشرها بعدين)</option>
+          <option value="public">إظهار للعلن فورًا</option>
+          <option value="csv">حسب عمود publish في الملف</option>
+        </select>
+      </div>
       <button disabled={pending} className={`${ui.btnPrimary} px-8 py-2.5`}>{pending ? 'جارٍ الاستيراد... لا تغلق الصفحة' : 'استيراد المنتجات'}</button>
       {state.message && <p className={ui.alertError}>{state.message}</p>}
       {state.created !== undefined && (
         <div className="space-y-2">
           <p className={ui.alertOk}>تم استيراد <b>{state.created}</b> منتج{state.failed ? ` — وفشل ${state.failed}` : ''}.</p>
+          {state.fileId && <p className="text-sm"><a href={`/admin/products/files/${state.fileId}`} className="font-bold text-brand-600 underline">افتح الملف وشوف المنتجات ←</a></p>}
+          {!!state.noImages && <p className={ui.alertError}>{state.noImages} منتج من غير صور. اتأكد إن عمود الصور اسمه <b>image_urls</b> (أو images / الصور) وفيه روابط تبدأ بـ https. الصور اللي جوه خلايا إكسل نفسها (مش روابط) مش بتتقري.</p>}
           {state.errors && state.errors.length > 0 && (
             <ul className="max-h-60 list-disc space-y-1 overflow-y-auto rounded-lg bg-red-50 p-3 pe-6 text-sm text-red-700">
               {state.errors.map((e, i) => <li key={i}>{e}</li>)}

@@ -80,7 +80,7 @@ export async function connectBot() {
     const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: `${getSiteUrl()}/api/telegram`, secret_token: secret, allowed_updates: ['message', 'channel_post', 'my_chat_member'], drop_pending_updates: true }),
+      body: JSON.stringify({ url: `${getSiteUrl()}/api/telegram`, secret_token: secret, allowed_updates: ['message', 'channel_post', 'my_chat_member', 'callback_query'], drop_pending_updates: true }),
       signal: AbortSignal.timeout(15000),
     });
     const j = (await res.json()) as { ok?: boolean; description?: string };

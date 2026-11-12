@@ -22,6 +22,7 @@ export default async function ImportPage() {
         <li><b>affiliate_url</b> (و <b>asin</b> اختياري): رابط أمازون بتاعك (https من amazon أو amzn.to). المنتج يظهر بزرار «اشترِ من أمازون» ولا يدخل السلة. يلزم تشغيل ملف <code dir="ltr">supabase/migrations/010_affiliate_products.sql</code> مرة واحدة.</li>
         <li><b>cost_price</b> و <b>supplier</b> و <b>private_notes</b> تفاصيل خاصة: يراها الأدمن والمالك فقط ولا تظهر للعملاء أبدًا. يلزم تشغيل ملف <code dir="ltr">supabase/migrations/006_product_details.sql</code> مرة واحدة في Supabase.</li>
         <li><b>publish</b> اكتب yes ليظهر المنتج في المتجر، أو اتركه فارغًا ليُحفظ كمسودة.</li>
+        <li><b>أنواع الملفات:</b> إكسل (.xlsx) أو CSV أو JSON مباشرة، من غير تحويل. كل ملف بيظهر في صفحة «المنتجات» كمجموعة تقدر تعدّل زيادتها أو تنشرها أو تحذفها كلها مرة واحدة.</li>
         <li><b>بدون ملف:</b> حدّد الجدول كله (مع صف العناوين) وانسخه، ثم الصقه في الخانة أدناه واضغط «استيراد». الصفوف الخاطئة تُتجاهل ويظهر لك سبب كل واحد منها.</li>
       </ol>
       <ImportForm />

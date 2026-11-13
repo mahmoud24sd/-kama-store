@@ -15,11 +15,11 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
     </>
   );
   return (
-    <div id={`f-${f.id}`} className={`${ui.card} space-y-2 p-3`}>
+    <div id={`f-${f.id}`} className={`${ui.card} space-y-1.5 p-2 text-sm`}>
       {notice && <p className={ui.alertOk}>{notice}</p>}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <Link href={`/admin/products/files/${f.id}`} className="font-extrabold text-brand-600 hover:underline">📁 {f.name}</Link>
+          <Link href={`/admin/products/files/${f.id}`} className="text-sm font-extrabold text-brand-600 hover:underline">📁 {f.name}</Link>
           <p className="text-xs text-gray-600">
             {f.count} منتج · {f.source === 'bot' ? 'من بوت تليجرام' : 'ملف مرفوع'}
           </p>
@@ -36,11 +36,11 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
       </div>
 
       <details open={Boolean(notice)} className="rounded-lg border border-gray-200">
-        <summary className="cursor-pointer px-3 py-2 text-sm font-bold">📂 فتح الفولدر ({f.count} منتج)</summary>
-        <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 lg:grid-cols-4">
+        <summary className="cursor-pointer px-2 py-1 text-xs font-bold">📂 فتح الفولدر ({f.count} منتج)</summary>
+        <div className="grid max-h-72 grid-cols-3 gap-1.5 overflow-y-auto p-1.5 sm:grid-cols-4 lg:grid-cols-5">
           {f.products.map((p) => (
-            <div key={p.id} className="rounded-lg border border-gray-100 p-1 text-xs">
-              {p.img ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.img} alt="" loading="lazy" className="h-24 w-full rounded object-cover" /> : <div className="flex h-24 items-center justify-center rounded bg-gray-50 text-red-600">بدون صورة</div>}
+            <div key={p.id} className="rounded-lg border border-gray-100 p-1 text-[11px]">
+              {p.img ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.img} alt="" loading="lazy" className="h-14 w-full rounded object-cover" /> : <div className="flex h-14 items-center justify-center rounded bg-gray-50 text-red-600">بدون صورة</div>}
               <p className="mt-1 line-clamp-2 font-semibold">{p.name}</p>
               <p className="text-gray-600">{formatPrice(p.price)}</p>
               <p className="text-[11px] text-gray-500">{[p.category ? `🏷 ${p.category}` : '🏷 بدون قسم', p.brand, p.shop ? `🏬 ${p.shop}` : ''].filter(Boolean).join(' · ')}</p>
@@ -52,8 +52,8 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
 
       {canEdit && (
         <details className="rounded-lg border border-amber-300 bg-amber-50">
-          <summary className="cursor-pointer px-3 py-2 text-sm font-bold">✏️ تعديل (القسم / الماركة / المحل / السعر) لكل منتجات الفولدر</summary>
-          <form action={bulkEditFile} className="space-y-2 p-3">
+          <summary className="cursor-pointer px-2 py-1 text-xs font-bold">✏️ تعديل (القسم / الماركة / المحل / السعر) لكل منتجات الفولدر</summary>
+          <form action={bulkEditFile} className="space-y-2 p-2">
             {hidden}
             <p className="text-xs text-gray-600">الخانة الفاضية ما بتتغيّرش.</p>
             <div className="grid gap-2 sm:grid-cols-3">

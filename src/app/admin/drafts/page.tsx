@@ -30,7 +30,7 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
       {folders.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-bold">📁 فولدرات ({folders.length})</h2>
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/drafts" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft={false} canTrash={canTrash} />)}
           </div>
           <Pagination total={folderTotal} page={pageNum(sp.fp)} param="fp" sp={sp} base="/admin/drafts" />

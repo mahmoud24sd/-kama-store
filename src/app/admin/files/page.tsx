@@ -25,7 +25,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
       {folders.length === 0 ? (
         <p className="py-8 text-center text-gray-500">مفيش ملفات جديدة.</p>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/files" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft canTrash={canTrash} />)}
         </div>
       )}

@@ -47,6 +47,22 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
   if (tids.length && hasServiceRole) {
     const { data } = await createAdminClient().from('telegram_state').select('key,value').in('key', tids.map((t) => `name:${t}`));
     for (const r of data ?? []) names.set(`t:${String(r.key).slice(5)}`, String(r.value));
+    // أدمن رفع قبل ما نحفظ اسمه: نجيبه من تليجرام ونخزّنه مرة واحدة
+    const token = (process.env.TELEGRAM_BOT_TOKEN ?? '').trim();
+    const missingIds = tids.filter((t) => !names.has(`t:${t}`));
+    if (token && missingIds.length) {
+      await Promise.all(missingIds.slice(0, 5).map(async (t) => {
+        try {
+          const r = await fetch(`https://api.telegram.org/bot${token}/getChat?chat_id=${t}`, { signal: AbortSignal.timeout(4000) });
+          const c = (await r.json())?.result as { first_name?: string; last_name?: string; username?: string } | undefined;
+          const nm = c ? [c.first_name, c.last_name].filter(Boolean).join(' ') || (c.username ? `@${c.username}` : '') : '';
+          if (nm) {
+            names.set(`t:${t}`, nm);
+            await createAdminClient().from('telegram_state').upsert({ key: `name:${t}`, value: nm });
+          }
+        } catch { /* نكمّل بالاسم العام */ }
+      }));
+    }
   }
 
   const folders: Folder[] = files.map((f) => ({
@@ -56,7 +72,7 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
     markup: Number(f.markup),
     is_public: f.is_public,
     created_at: f.created_at,
-    by: (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || `أدمن البوت (${f.tg_by})` : '') || '—',
+    by: (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
     products: byFile.get(f.id) ?? [],
     count: counts.get(f.id) ?? 0,
   }));

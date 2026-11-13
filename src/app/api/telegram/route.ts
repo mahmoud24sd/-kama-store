@@ -63,8 +63,11 @@ async function getState(db: Db, key: string, fallback: string) {
 }
 const setState = (db: Db, key: string, value: string) => db.from('telegram_state').upsert({ key, value });
 /** نحفظ اسم الأدمن عشان يظهر في الموقع مين رفع الملف */
-const rememberName = (db: Db, from?: { id: number; first_name?: string; username?: string }) =>
-  from && (from.username || from.first_name) ? setState(db, `name:${from.id}`, from.username ? `@${from.username}` : String(from.first_name)).then(() => null, () => null) : null;
+const rememberName = (db: Db, from?: { id: number; first_name?: string; last_name?: string; username?: string }) => {
+  const full = from ? [from.first_name, from.last_name].filter(Boolean).join(' ') : '';
+  const nm = full || (from?.username ? `@${from.username}` : '');
+  return from && nm ? setState(db, `name:${from.id}`, nm).then(() => null, () => null) : null;
+};
 
 /** ينزّل الصورة من تليجرام ويرفعها لمخزن الموقع ويرجع رابطها العام (لا نكشف توكن البوت أبدًا) */
 async function savePhoto(db: Db, fileId: string): Promise<string | null> {

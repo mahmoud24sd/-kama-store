@@ -72,7 +72,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
         <section className="space-y-2">
           <h2 className="font-extrabold">📁 الفولدرات المنشورة ({folders.length})</h2>
           <p className="text-xs text-gray-600">افتح الفولدر تشوف المنتجات، وعدّل القسم والعلامة والمحل والسعر لكلها مرة واحدة.</p>
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} />)}
           </div>
           <Pagination total={folderData.total} page={fp} param="fp" sp={sp} base="/admin/products" />

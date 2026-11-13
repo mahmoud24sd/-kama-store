@@ -35,7 +35,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const min = num(sp.min);
   const max = num(sp.max);
   const rating = num(sp.rating);
-  const sort = first(sp.sort) || 'newest';
+  const sort = SORTS.some((x) => x.value === first(sp.sort)) ? (first(sp.sort) as string) : 'newest';
   const deals = first(sp.deals) === '1';
   const page = Math.max(1, Math.floor(num(sp.page) ?? 1));
 
@@ -69,13 +69,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <div>
             <h1 className="text-lg font-extrabold">{title}</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 text-sm">
-            <span className="text-gray-500">ترتيب:</span>
+          <div className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-1 text-sm [scrollbar-width:none]">
+            <span className="shrink-0 text-gray-500">ترتيب:</span>
             {SORTS.map((s) => (
               <Link
                 key={s.value}
                 href={buildHref({ sort: s.value, page: undefined })}
-                className={`rounded-full border px-3 py-1 ${sort === s.value ? 'border-brand-700 bg-brand-800 text-white' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+                className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1 transition-colors ${sort === s.value ? 'border-brand-700 bg-brand-800 text-white' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
               >
                 {s.label}
               </Link>

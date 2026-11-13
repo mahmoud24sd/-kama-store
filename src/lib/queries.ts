@@ -103,6 +103,7 @@ export async function searchProducts(p: SearchParams) {
   if (p.rating !== undefined) query = query.gte('rating_avg', p.rating);
   if (p.deals) query = query.eq('is_deal', true);
 
+  // ترتيب ثابت: نضيف created_at ثم id كمعيار أخير عشان المنتج ما يتكررش ولا يختفي بين الصفحات
   switch (p.sort) {
     case 'price_asc':
       query = query.order('price', { ascending: true });
@@ -111,14 +112,15 @@ export async function searchProducts(p: SearchParams) {
       query = query.order('price', { ascending: false });
       break;
     case 'best':
-      query = query.order('sold_count', { ascending: false });
+      query = query.order('sold_count', { ascending: false, nullsFirst: false });
       break;
     case 'rating':
-      query = query.order('rating_avg', { ascending: false });
+      query = query.order('rating_avg', { ascending: false, nullsFirst: false }).order('rating_count', { ascending: false, nullsFirst: false });
       break;
     default:
-      query = query.order('created_at', { ascending: false });
+      break;
   }
+  query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
 
   const from = (page - 1) * PAGE_SIZE;
   const { data, count } = await query.range(from, from + PAGE_SIZE - 1);

@@ -34,6 +34,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
       .select('*, product_images(id,url,sort_order), categories(name,slug), product_variants(id,product_id,color,size,price_override,stock,sku)', { count: 'exact' })
       .eq('is_active', true)
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .range((pp - 1) * 10, pp * 10 - 1);
     if (withDeleted) q = q.is('deleted_at', null);
     if (loose) q = q.is('file_id', null);

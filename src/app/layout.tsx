@@ -9,6 +9,7 @@ import ChatWidget from '@/components/chat/ChatWidget';
 import { CartProvider } from '@/components/cart/CartProvider';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { getSiteUrl } from '@/lib/site';
+import PwaRegister from '@/components/PwaRegister';
 
 const cairo = Cairo({ subsets: ['arabic', 'latin'], variable: '--font-cairo', display: 'swap' });
 
@@ -16,15 +17,19 @@ export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: { default: 'Kama Store — تسوق أونلاين', template: '%s | Kama Store' },
   description: 'Kama Store: متجر إلكتروني لكل احتياجاتك بأسعار مميزة وشحن سريع.',
+  applicationName: 'Kama Store',
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'Kama Store', statusBarStyle: 'default' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#154f5c' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // اتجاه RTL. عند إضافة الإنجليزية: اجعل lang و dir ديناميكيين حسب اللغة المختارة
     <html lang="ar" dir="rtl" className={cairo.variable}>
       <body id="top" className="min-h-screen font-sans">
+        <PwaRegister />
         {isSupabaseConfigured ? (
           <CartProvider>
             <Header />

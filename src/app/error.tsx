@@ -8,8 +8,8 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   }, [error]);
   return (
     <div className="mx-auto max-w-lg space-y-3 p-8 text-center">
-      <h1 className="text-xl font-extrabold">حدث خطأ غير متوقع</h1>
-      <p className="text-sm text-gray-600">جرّب إعادة تحميل الصفحة. لو تكرر الخطأ أرسل لنا الرسالة التالية:</p>
+      <h1 className="text-xl font-extrabold">الصفحة دي مش شغالة دلوقتي</h1>
+      <p className="text-sm text-gray-600">جرّب إعادة المحاولة. لو لسه مش شغالة ابعت لنا الرسالة دي:</p>
       <p dir="ltr" className="break-words rounded-lg bg-gray-100 p-2 text-left text-xs text-gray-700">
         {error.message || 'unknown'} {error.digest ? `(digest: ${error.digest})` : ''}
       </p>

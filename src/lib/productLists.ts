@@ -27,6 +27,7 @@ export async function loadList(supabase: Sb, publicState: boolean, page = 1, siz
     .eq('is_active', publicState)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .range((page - 1) * size, page * size - 1);
   if (inboxIds.length > 0) pq = pq.or(`file_id.is.null,file_id.not.in.(${inboxIds.join(',')})`);
   const { data: pdata, count: total } = await pq;

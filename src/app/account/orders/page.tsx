@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import OrderTimeline from '@/components/orders/OrderTimeline';
 import type { Order, OrderEvent } from '@/lib/types';
-import { formatDate, formatPrice } from '@/lib/utils';
+import { formatDate, formatPrice, safeImageUrl } from '@/lib/utils';
 import { ORDER_STATUS_COLOR, ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'طلباتي' };
@@ -59,7 +59,7 @@ export default async function OrdersPage() {
                 {(o.order_items ?? []).map((it) => (
                   <li key={it.id} className="flex items-center gap-3 py-3 text-sm">
                     <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-50">
-                      {it.image_url ? <Image src={it.image_url} alt="" fill sizes="48px" className="object-contain p-1" /> : <span className="flex h-full items-center justify-center text-gray-300"><ImageOff className="h-5 w-5" /></span>}
+                      {safeImageUrl(it.image_url) ? <Image src={safeImageUrl(it.image_url) as string} alt="" fill sizes="48px" className="object-contain p-1" /> : <span className="flex h-full items-center justify-center text-gray-300"><ImageOff className="h-5 w-5" /></span>}
                     </span>
                     <span className="flex-1">
                       {it.name}

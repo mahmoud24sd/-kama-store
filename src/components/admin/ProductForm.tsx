@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { saveProduct } from '@/app/actions/admin';
 import type { Category, Product, ProductPrivate } from '@/lib/types';
-import { sortedImages } from '@/lib/utils';
+import { sortedImages , safeImageUrl } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
 function toLocalInput(iso: string | null): string {
@@ -127,7 +127,7 @@ export default function ProductForm({ product, categories, privateInfo }: { prod
           <ul className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-5">
             {images.map((img) => (
               <li key={img.id} className="rounded-lg border border-gray-200 p-2 text-center text-xs">
-                <span className="relative mx-auto mb-1 block h-20 w-20"><Image src={img.url} alt="" fill sizes="80px" className="object-contain" /></span>
+                <span className="relative mx-auto mb-1 block h-20 w-20"><Image src={safeImageUrl(img.url) ?? "/icons/icon-192.png"} alt="" fill sizes="80px" className="object-contain" /></span>
                 <label className="flex items-center justify-center gap-1 text-red-600"><input type="checkbox" name="delete_images" value={img.id} /> حذف</label>
               </li>
             ))}

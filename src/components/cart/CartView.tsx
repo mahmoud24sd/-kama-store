@@ -8,7 +8,7 @@ import { useCart } from './CartProvider';
 import { useCartDetails } from './useCartDetails';
 import { quoteCoupon } from '@/app/actions/cart';
 import { FREE_SHIPPING_THRESHOLD, shippingFee } from '@/lib/shipping';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, safeImageUrl } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
 export default function CartView() {
@@ -52,8 +52,8 @@ export default function CartView() {
           {items.map((it) => (
             <li key={`${it.productId}-${it.variantId}`} className="flex gap-3 py-4">
               <Link href={it.slug ? `/products/${encodeURIComponent(it.slug)}` : '#'} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-gray-50">
-                {it.image ? (
-                  <Image src={it.image} alt={it.name} fill sizes="96px" className="object-contain p-1" />
+                {safeImageUrl(it.image) ? (
+                  <Image src={safeImageUrl(it.image) as string} alt={it.name} fill sizes="96px" className="object-contain p-1" />
                 ) : (
                   <span className="flex h-full items-center justify-center text-gray-300"><ImageOff className="h-8 w-8" /></span>
                 )}

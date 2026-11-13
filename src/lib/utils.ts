@@ -17,8 +17,26 @@ export function discountPercent(price: number, compareAt: number | null | undefi
   return Math.round(((compareAt - price) / compareAt) * 100);
 }
 
+/** رابط صورة آمن لمكوّن next/image: https أو مسار داخلي فقط، وإلا null (بدل ما الصفحة كلها تقع) */
+export function safeImageUrl(u: string | null | undefined): string | null {
+  let s = (u ?? '').trim();
+  if (!s) return null;
+  if (s.startsWith('//')) s = `https:${s}`;
+  if (s.startsWith('http://')) s = `https://${s.slice(7)}`;
+  if (s.startsWith('/') && !s.startsWith('//')) return s;
+  try {
+    const url = new URL(s);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function sortedImages(p: { product_images?: ProductImage[] | null }): ProductImage[] {
-  return [...(p.product_images ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+  return [...(p.product_images ?? [])]
+    .map((i) => ({ ...i, url: safeImageUrl(i.url) as string }))
+    .filter((i) => i.url)
+    .sort((a, b) => a.sort_order - b.sort_order);
 }
 
 export function firstImage(p: { product_images?: ProductImage[] | null }): string | null {

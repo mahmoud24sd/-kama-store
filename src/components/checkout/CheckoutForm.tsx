@@ -11,7 +11,7 @@ import { quoteCoupon } from '@/app/actions/cart';
 import { placeOrder } from '@/app/actions/orders';
 import { EXPRESS_FEE, SHIPPING_OPTIONS, shippingFee, type ShippingMethod } from '@/lib/shipping';
 import type { Address } from '@/lib/types';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, safeImageUrl } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 import { GOVERNORATES } from '@/lib/governorates';
 
@@ -208,7 +208,7 @@ export default function CheckoutForm({ addresses, defaultName, defaultPhone, car
           {items.map((it) => (
             <li key={`${it.productId}-${it.variantId}`} className="flex gap-3 text-sm">
               <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-50">
-                {it.image ? <Image src={it.image} alt="" fill sizes="56px" className="object-contain p-1" /> : <span className="flex h-full items-center justify-center text-gray-300"><ImageOff className="h-5 w-5" /></span>}
+                {safeImageUrl(it.image) ? <Image src={safeImageUrl(it.image) as string} alt="" fill sizes="56px" className="object-contain p-1" /> : <span className="flex h-full items-center justify-center text-gray-300"><ImageOff className="h-5 w-5" /></span>}
               </span>
               <span className="flex-1">
                 <span className="line-clamp-2 font-semibold">{it.name}</span>

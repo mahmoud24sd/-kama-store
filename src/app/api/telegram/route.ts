@@ -90,7 +90,10 @@ async function savePhoto(db: Db, fileId: string): Promise<string | null> {
 const sourceOf = (m: TgMsg) =>
   m.forward_origin?.chat?.title || m.forward_from_chat?.title || m.forward_origin?.sender_user?.first_name || m.forward_origin?.sender_user_name || m.chat.title || 'تليجرام';
 
-type Job = { channel: string; cutoff: number; before?: number; chat: number; collected: number; by: number };
+type Job = { channel: string; cutoff: number; before?: number; chat: number; collected: number; by: number; top?: boolean; phase?: 'scan' | 'save'; scanned?: number };
+const TOP_N = 500; // عدد المنتجات الأعلى مشاهدة اللي بنحفظها
+const SCAN_MAX = 1500; // أقصى عدد منشورات نفحصها في القناة
+type Cand = { id: number; time: number; text: string; photos: string[]; url: string; views: number };
 
 async function uploadFromUrl(db: Db, url: string): Promise<string | null> {
   try {
@@ -110,11 +113,78 @@ async function uploadFromUrl(db: Db, url: string): Promise<string | null> {
 
 const channelChatId = (channel: string) => -(parseInt(createHash('sha1').update(channel.toLowerCase()).digest('hex').slice(0, 11), 16) + 1000000);
 
+async function finishJob(db: Db, job: Job, by: number) {
+  await db.from('telegram_state').delete().in('key', [`job:${by}`, `cand:${by}`]);
+  await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (فيه اسم وسعر وصورة).`);
+  if (job.collected > 0) {
+    await uploadToSite(db, job.chat, by, false).catch(() => null);
+    await keyboard(job.chat, 'وتقدر كمان تاخد ملف:', [[{ text: '📊 إكسل', data: 'exp:all:xlsx' }, { text: '🧾 JSON', data: 'exp:all:json' }]]);
+  }
+}
+
+/** أعلى 500 منتج مشاهدةً في القناة: نفحص المنشورات ونحتفظ بالأعلى، بعدين نحفظ صورهم ونرفعهم */
+async function runTop(db: Db, by: number, job: Job) {
+  const key = `cand:${by}`;
+  let cands: Cand[] = [];
+  try { cands = JSON.parse(await getState(db, key, '[]')) as Cand[]; } catch { cands = []; }
+  const started = Date.now();
+  if (job.phase !== 'save') {
+    let done = false;
+    while (Date.now() - started < 35000) {
+      const { posts, ok } = await fetchChannelPage(job.channel, job.before);
+      if (!ok) {
+        await say(job.chat, 'ما قدرتش أفتح القناة. تأكد إنها عامة وإن الرابط صحيح.');
+        await db.from('telegram_state').delete().in('key', [`job:${by}`, key]);
+        return;
+      }
+      if (posts.length === 0) { done = true; break; }
+      const minId = Math.min(...posts.map((p) => p.id));
+      job.scanned = (job.scanned ?? 0) + posts.length;
+      for (const g of groupPosts(posts)) {
+        const parsed = parseCaption(g.text);
+        if (!parsed.name || parsed.price === null || g.photos.length === 0) continue;
+        cands.push({ id: g.id, time: g.time, text: g.text.slice(0, 800), photos: g.photos.slice(0, 4), url: g.url, views: g.views });
+      }
+      cands.sort((a, b) => b.views - a.views);
+      cands = cands.slice(0, TOP_N);
+      if (job.scanned >= SCAN_MAX || minId <= 1) { done = true; break; }
+      job.before = minId;
+    }
+    await setState(db, key, JSON.stringify(cands));
+    if (!done) {
+      await setState(db, `job:${by}`, JSON.stringify(job));
+      return say(job.chat, `بفحص @${job.channel}: فحصت ${job.scanned} منشور ولقيت ${cands.length} منتج لحد دلوقتي. اكتب /continue عشان يكمل.`);
+    }
+    job.phase = 'save';
+    await say(job.chat, `خلّصت الفحص (${job.scanned} منشور). هحفظ أعلى ${cands.length} منتج مشاهدةً.`);
+  }
+  // حفظ الصور والمنتجات على دفعات
+  while (cands.length > 0 && Date.now() - started < 38000) {
+    const batch = cands.slice(0, 5);
+    await Promise.all(batch.map(async (g) => {
+      const parsed = parseCaption(g.text);
+      const urls = (await Promise.all(g.photos.map((u) => uploadFromUrl(db, u)))).filter((u): u is string => Boolean(u));
+      if (!parsed.name || parsed.price === null || urls.length === 0) return;
+      const { error } = await db.from('telegram_items').upsert(
+        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url, added_by: by },
+        { onConflict: 'chat_id,message_id,added_by', ignoreDuplicates: true },
+      );
+      if (!error) job.collected += 1;
+    }));
+    cands = cands.slice(batch.length);
+    await setState(db, key, JSON.stringify(cands));
+  }
+  if (cands.length === 0) return finishJob(db, job, by);
+  await setState(db, `job:${by}`, JSON.stringify(job));
+  await say(job.chat, `اتحفظ ${job.collected} منتج، وفاضل ${cands.length}. اكتب /continue عشان يكمل.`);
+}
+
 /** يعالج قناة عامة صفحة بصفحة حتى ينتهي وقت التنفيذ أو نصل لتاريخ البداية. يُستأنف بـ /continue */
 async function runJob(db: Db, by: number) {
   const raw = await getState(db, `job:${by}`, '');
   if (!raw) return;
   const job = JSON.parse(raw) as Job;
+  if (job.top) return runTop(db, by, job);
   const started = Date.now();
   let finished = false;
   while (Date.now() - started < 40000) {
@@ -143,12 +213,7 @@ async function runJob(db: Db, by: number) {
     job.before = minId;
   }
   if (finished) {
-    await db.from('telegram_state').delete().eq('key', `job:${by}`);
-    await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (فيه اسم وسعر وصورة).`);
-    if (job.collected > 0) {
-      await uploadToSite(db, job.chat, by, false).catch(() => null);
-      await keyboard(job.chat, 'وتقدر كمان تاخد ملف:', [[{ text: '📊 إكسل', data: 'exp:all:xlsx' }, { text: '🧾 JSON', data: 'exp:all:json' }]]);
-    }
+    await finishJob(db, job, by);
   } else {
     await setState(db, `job:${by}`, JSON.stringify(job));
     await say(job.chat, `لسه شغّال على @${job.channel}: اتحفظ ${job.collected} لحد دلوقتي. اكتب /continue عشان يكمل.`);
@@ -349,6 +414,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         'الزيادة على الأسعار بيحددها المالك من الموقع، والقسم تختاره إنت بـ /category.',
         '',
         '/channel https://t.me/اسم_القناة 30  ← آخر 30 يوم',
+        '/top https://t.me/اسم_القناة  ← أعلى 500 منتج مشاهدةً في القناة',
         '/continue  ← كمّل السحب لو وقف',
         '/count  ← كم منتج محفوظ',
         '/export  ← ملف بالجديد فقط (تختار إكسل أو JSON أو رفع للموقع)',
@@ -391,6 +457,16 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     const job: Job = { channel, cutoff: Date.now() - days * 86400000, chat, collected: 0, by };
     await setState(db, `job:${by}`, JSON.stringify(job));
     await say(chat, `تمام، بسحب منتجات @${channel} لآخر ${days} يوم. هبعتلك رسالة لما أخلّص. (استخدم منتجات عندك إذن منها)`);
+    after(() => runJob(db, by));
+    return;
+  }
+  if (cmd === '/top') {
+    const channel = channelFromLink(rest[0] ?? '');
+    if (!channel) return say(chat, 'ابعت رابط قناة عامة، مثلًا:\n/top https://t.me/اسم_القناة');
+    const job: Job = { channel, cutoff: 0, chat, collected: 0, by, top: true, phase: 'scan', scanned: 0 };
+    await db.from('telegram_state').delete().eq('key', `cand:${by}`);
+    await setState(db, `job:${by}`, JSON.stringify(job));
+    await say(chat, `تمام، هفحص @${channel} وأحفظ أعلى ${TOP_N} منتج مشاهدةً (تليجرام مابيوريش المبيعات، فالمشاهدات هي أقرب مؤشر للأكتر طلبًا). هبعتلك رسالة لما أخلّص.`);
     after(() => runJob(db, by));
     return;
   }

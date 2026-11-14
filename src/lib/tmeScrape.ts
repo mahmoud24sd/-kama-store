@@ -1,8 +1,15 @@
 /** قراءة المعاينة العامة لقناة تليجرام عامة (t.me/s/اسم_القناة). لا تحتاج تسجيل دخول، وتعمل للقنوات العامة فقط */
 
-export type TmePost = { id: number; time: number; text: string; photos: string[]; url: string };
+export type TmePost = { id: number; time: number; text: string; photos: string[]; url: string; views: number };
 
 const ENT: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ' };
+/** «12.3K» / «1.2M» / «845» → رقم */
+const parseViews = (t: string | undefined) => {
+  const m = (t ?? '').trim().match(/^([\d.,]+)\s*([KkMm]?)$/);
+  if (!m) return 0;
+  const n = parseFloat(m[1].replace(/,/g, ''));
+  return Math.round(n * (m[2].toLowerCase() === 'k' ? 1e3 : m[2].toLowerCase() === 'm' ? 1e6 : 1)) || 0;
+};
 const decode = (s: string) => s.replace(/&(?:amp|lt|gt|quot|nbsp|#39);/g, (m) => ENT[m] ?? m).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
 const htmlToText = (h: string) =>
   decode(h.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div)>/gi, '\n').replace(/<[^>]+>/g, '')).replace(/\n{3,}/g, '\n\n').trim();
@@ -28,7 +35,7 @@ export function parsePage(html: string): TmePost[] {
     if (!Number.isFinite(id) || !Number.isFinite(time)) continue;
     const textM = part.match(/tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/);
     const photos = [...part.matchAll(/tgme_widget_message_photo_wrap[^>]*background-image:url\('([^']+)'\)/g)].map((m) => decode(m[1]));
-    out.push({ id, time, text: textM ? htmlToText(textM[1]) : '', photos: [...new Set(photos)], url: `https://t.me/${post[1]}` });
+    out.push({ id, time, text: textM ? htmlToText(textM[1]) : '', photos: [...new Set(photos)], url: `https://t.me/${post[1]}`, views: parseViews(part.match(/tgme_widget_message_views[^>]*>([^<]+)</)?.[1]) });
   }
   return out;
 }

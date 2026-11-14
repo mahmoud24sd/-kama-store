@@ -47,12 +47,12 @@ export default async function HomePage() {
       {topLevel.length > 0 && (
         <section className="rounded-xl bg-white p-4">
           <h2 className="mb-3 text-xl font-extrabold">تسوق حسب القسم</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
             {topLevel.map((c) => (
               <Link
                 key={c.id}
                 href={`/products?category=${encodeURIComponent(c.slug)}`}
-                className="flex h-20 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-2 text-center text-sm font-bold text-brand-800 transition hover:border-accent-400 hover:bg-accent-300/20"
+                className="flex aspect-square items-center justify-center rounded-xl border border-gray-200 bg-gray-50 p-1.5 text-center text-xs font-bold leading-snug sm:text-sm text-brand-800 transition hover:border-accent-400 hover:bg-accent-300/20"
               >
                 {c.name}
               </Link>

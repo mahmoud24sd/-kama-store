@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ProductGallery from '@/components/product/ProductGallery';
 import PurchasePanel from '@/components/product/PurchasePanel';
+import { getSiteUrl } from '@/lib/site';
 import { affiliateHref } from '@/lib/affiliate';
 import { ui } from '@/lib/ui';
 import ProductGrid from '@/components/product/ProductGrid';
@@ -41,8 +42,27 @@ export default async function ProductPage({ params }: Props) {
   const baseStock = product.stock;
   const detailLines = parseDetailLines(product.details);
 
+  // بيانات منظّمة: بتخلّي جوجل يعرض السعر والصورة والتقييم في النتائج
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    image: images.slice(0, 4),
+    description: product.description?.slice(0, 300) || product.name,
+    ...(product.brand ? { brand: { '@type': 'Brand', name: product.brand } } : {}),
+    offers: {
+      '@type': 'Offer',
+      url: `${getSiteUrl()}/products/${encodeURIComponent(product.slug)}`,
+      priceCurrency: 'EGP',
+      price: product.price,
+      availability: (product.stock > 0 || (product.product_variants ?? []).some((v) => v.stock > 0)) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
+    ...(Number(product.rating_count) > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: Number(product.rating_avg), reviewCount: Number(product.rating_count) } } : {}),
+  };
+
   return (
     <div className="space-y-5">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <nav className="text-sm text-gray-500" aria-label="مسار التصفح">
         <Link href="/" className="hover:underline">الرئيسية</Link>
         <span className="mx-1">/</span>

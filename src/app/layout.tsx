@@ -28,12 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // اتجاه RTL. عند إضافة الإنجليزية: اجعل lang و dir ديناميكيين حسب اللغة المختارة
     <html lang="ar" dir="rtl" className={cairo.variable}>
-      <body id="top" className="min-h-screen font-sans">
+      <body id="top" className="min-h-screen overflow-x-clip font-sans">
         <PwaRegister />
         {isSupabaseConfigured ? (
           <CartProvider>
             <Header />
-            <main className="mx-auto min-h-[60vh] max-w-7xl px-3 py-4">{children}</main>
+            <main className="mx-auto min-h-[60vh] min-w-0 max-w-7xl px-3 py-4">{children}</main>
             <Footer />
             <SafeBoundary><ChatWidget /></SafeBoundary>
             <SafeBoundary><StaffChatNotifier /></SafeBoundary>

@@ -223,7 +223,7 @@ async function readyItems(db: Db, by: number, all: boolean) {
   const items = data ?? [];
   const markup = Number(await getState(db, 'markup', '0'));
   const fixed = Number(await getState(db, 'fixed', '0'));
-  const category = await getState(db, 'category', '');
+  const category = (await getState(db, `category:${by}`, '')) || (await getState(db, 'category', '')); // قسم كل أدمن، وإلا القسم العام
   const publish = (await getState(db, 'publish', 'no')) === 'yes';
   const ready = items.filter((i) => i.price != null && i.name && (i.images as string[]).length > 0);
   return { ready, skipped: items.length - ready.length, markup, fixed, category, publish };
@@ -346,7 +346,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
       [
         `معرّفك: ${m.from?.id}`,
         'ابعت لي رابط قناة عامة (مثلًا https://t.me/اسم_القناة) وأنا أسحب منتجاتها وأجهّز لك ملف إكسل.',
-        'الزيادة على الأسعار والقسم بيحددهم المالك من الموقع.',
+        'الزيادة على الأسعار بيحددها المالك من الموقع، والقسم تختاره إنت بـ /category.',
         '',
         '/channel https://t.me/اسم_القناة 30  ← آخر 30 يوم',
         '/continue  ← كمّل السحب لو وقف',
@@ -354,7 +354,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         '/export  ← ملف بالجديد فقط (تختار إكسل أو JSON أو رفع للموقع)',
         '/exportall  ← نفس الشيء بكل منتجاتك',
         '/upload  ← ارفع الجديد للموقع كمسودة',
-        ...(isOwner ? ['/category  ← اختار القسم اللي المسودات تتحفظ فيه'] : []),
+        '/category  ← اختار القسم اللي مسوداتك تتحفظ فيه',
         ...(isOwner ? ['', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
       ].join('\n'),
     );
@@ -374,14 +374,14 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     await setState(db, 'admins', JSON.stringify(admins.filter((a) => a !== id)));
     return say(chat, `تم حذف ${id} من الأدمن.`);
   }
-  if (cmd === '/category' && isOwner) {
+  if (cmd === '/category') {
     const { data: cats } = await db.from('categories').select('id,name').order('name').limit(30);
     const rows: { text: string; data: string }[][] = [[{ text: 'بدون قسم', data: 'cat:none' }]];
     for (const c of cats ?? []) rows.push([{ text: String(c.name), data: `cat:${c.id}` }]);
-    return keyboard(chat, `اختار القسم اللي المسودات هتتحفظ فيه (الحالي: ${(await getState(db, 'category', '')) || 'بدون قسم'}):`, rows);
+    return keyboard(chat, `اختار القسم اللي المسودات هتتحفظ فيه (الحالي: ${(await getState(db, `category:${by}`, '')) || (await getState(db, 'category', '')) || 'بدون قسم'}):`, rows);
   }
-  if (cmd === '/add' || cmd === '/markup' || cmd === '/category' || cmd === '/publish') {
-    return say(chat, 'الزيادة والقسم والنشر بيحددهم المالك من الموقع (لوحة التحكم ← بوت تليجرام).');
+  if (cmd === '/add' || cmd === '/markup' || cmd === '/publish') {
+    return say(chat, 'الزيادة والنشر بيحددهم المالك من الموقع (لوحة التحكم ← بوت تليجرام).');
   }
   if (cmd === '/channel') {
     const link = rest[0] ?? '';
@@ -443,13 +443,10 @@ export async function POST(req: Request) {
       const [kind, a1, a2] = (cq.data ?? '').split(':');
       if (kind === 'exp' && (a2 === 'xlsx' || a2 === 'json' || a2 === 'csv')) await exportFiles(db, chatId, cq.from.id, a1 === 'all', a2);
       else if (kind === 'cat') {
-        if (!owner) await say(chatId, 'اختيار القسم للمالك بس.');
-        else {
-          let name = '';
-          if (a1 !== 'none' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) name = String((await db.from('categories').select('name').eq('id', a1).maybeSingle()).data?.name ?? '');
-          await setState(db, 'category', name);
-          await say(chatId, name ? `✅ المسودات الجاية هتتحفظ في قسم «${name}».` : '✅ المسودات الجاية من غير قسم.');
-        }
+        let name = '';
+        if (a1 !== 'none' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) name = String((await db.from('categories').select('name').eq('id', a1).maybeSingle()).data?.name ?? '');
+        await setState(db, `category:${cq.from.id}`, name);
+        await say(chatId, name ? `✅ مسوداتك الجاية هتتحفظ في قسم «${name}». بعد الرفع افتح «المسودة» في الموقع تعدّل وتنشر.` : '✅ مسوداتك الجاية من غير قسم.');
       } else if (kind === 'up') await uploadToSite(db, chatId, cq.from.id, a1 === 'all');
       else if (kind === 'pub' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) {
         if (!owner) await say(chatId, 'النشر للمالك من هنا، أو من الموقع لمن عنده صلاحية «نشر المنتجات من بوت تليجرام».');

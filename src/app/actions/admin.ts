@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { assertAdmin, assertPermission } from '@/lib/auth';
+import { enqueueSocial } from '@/lib/social';
+import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { slugify, toNumber } from '@/lib/utils';
 
 const BUCKET = 'product-images';
@@ -130,6 +132,7 @@ export async function saveProduct(formData: FormData) {
   // من نشر المنتج: عند أول نشر فقط. منفصل عن الحفظ الأساسي حتى لا يتعطل الحفظ لو لم يُشغَّل ملف 008 بعد
   if (isActive && !existingRow?.is_active) {
     await supabase.from('products').update({ published_by: profile.id, published_at: new Date().toISOString() }).eq('id', productId);
+    if (hasServiceRole && productId) await enqueueSocial(createAdminClient(), [productId]);
   }
 
   // التفاصيل الخاصة: جدول منفصل لا يقرأه إلا الأدمن والمالك (RLS)

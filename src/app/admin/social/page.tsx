@@ -50,7 +50,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
           <form action={postSocialNow}><button className={ui.btnOutline}>انشر دفعة دلوقتي</button></form>
           {count('failed') > 0 && <form action={retryFailedSocial}><button className={ui.btnOutline}>إعادة محاولة الفاشل ({count('failed')})</button></form>}
         </div>
-        <p className="text-xs text-gray-500">أي منتج بيتنشر للعلن بيدخل الطابور، وبيتنشر على السوشيال بمعدل 2 لكل منصة في كل دفعة (حد انستجرام 100 منشور في اليوم). الدفعة بتتنفّذ تلقائي من cron-job.org على الرابط /api/cron/social كل 30 دقيقة، أو بزرار «انشر دفعة دلوقتي».</p>
+        <p className="text-xs text-gray-500">أي منتج بيتنشر للعلن بيدخل الطابور، وبيتنشر على السوشيال بمعدل 2 لكل منصة في كل دفعة (حد انستجرام 100 منشور في اليوم). أول دفعة بتتنشر فورًا أول ما تنشر، والباقي بيتكمّل تلقائي كل حوالي 10 دقايق مع زيارات الموقع (ومن cron-job.org لو مفعّله)، أو بزرار «انشر دفعة دلوقتي».</p>
       </section>
 
       <p className="text-sm text-gray-600">في الطابور: {count('pending')} · اتنشر: {count('sent')} · فشل: {count('failed')}</p>

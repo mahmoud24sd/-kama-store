@@ -1,9 +1,12 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
+import { runSocialIfDue } from '@/lib/social';
+import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 /** يسجّل زيارة واحدة لكل متصفح كل 30 دقيقة (كوكي). لا يرجع العدد: العدد للأدمن المصرّح لهم فقط */
 export async function POST(request: Request) {
   try {
+    if (hasServiceRole) after(() => runSocialIfDue(createAdminClient()));
     const seen = /(?:^|;\s*)kv=1(?:;|$)/.test(request.headers.get('cookie') ?? '');
     const res = NextResponse.json({ ok: true });
     if (seen) return res;

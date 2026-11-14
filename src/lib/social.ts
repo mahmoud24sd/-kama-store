@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { getSiteUrl } from '@/lib/site';
 import type { createAdminClient } from '@/lib/supabase/admin';
 
@@ -17,7 +18,8 @@ export function configuredPlatforms(): Platform[] {
 
 export async function socialAutoOn(db: Db): Promise<boolean> {
   const { data } = await db.from('app_settings').select('value').eq('key', 'social_auto').maybeSingle();
-  return String(data?.value ?? '') === 'on';
+  // شغّال تلقائيًا ما لم يقفله المالك صراحةً
+  return String(data?.value ?? 'on') !== 'off';
 }
 
 /** يضيف المنتجات المنشورة لطابور السوشيال (مرة واحدة لكل منتج ومنصة). لا يرمي أخطاء أبدًا */
@@ -28,6 +30,12 @@ export async function enqueueSocial(db: Db, productIds: string[]) {
     const rows = productIds.flatMap((product_id) => platforms.map((platform) => ({ product_id, platform })));
     for (let i = 0; i < rows.length; i += 200) {
       await db.from('social_posts').upsert(rows.slice(i, i + 200), { onConflict: 'product_id,platform', ignoreDuplicates: true });
+    }
+    // أول دفعة تتنشر فورًا من غير انتظار أي جدولة، والباقي بيتكمّل تلقائي مع زيارات الموقع أو الـ cron
+    try {
+      after(() => runSocialBatch(db, 3).catch(() => null));
+    } catch {
+      /* خارج سياق الطلب: الطابور هيتنفّذ في الدفعة الجاية */
     }
   } catch {
     /* الطابور اختياري */
@@ -80,8 +88,26 @@ async function postOne(platform: Platform, text: string, image: string): Promise
 }
 
 /** ينشر دفعة صغيرة من الطابور (للالتزام بحدود انستجرام: 100 منشور/24 ساعة) */
+/** دفعة بحد أدنى 10 دقايق بين كل دفعتين، تُستدعى مع زيارات الموقع: نشر مستمر من غير خدمة جدولة خارجية */
+export async function runSocialIfDue(db: Db, everyMinutes = 10) {
+  try {
+    if (configuredPlatforms().length === 0 || !(await socialAutoOn(db))) return;
+    const { data } = await db.from('app_settings').select('value').eq('key', 'social_last_run').maybeSingle();
+    const last = Number(data?.value ?? 0);
+    if (Date.now() - last < everyMinutes * 60000) return;
+    const { count } = await db.from('social_posts').select('id', { count: 'exact', head: true }).in('status', ['pending', 'failed']);
+    if (!count) return;
+    await db.from('app_settings').upsert({ key: 'social_last_run', value: String(Date.now()) }, { onConflict: 'key' });
+    await runSocialBatch(db, 2);
+  } catch {
+    /* اختياري */
+  }
+}
+
 export async function runSocialBatch(db: Db, perPlatform = 2) {
   const result = { sent: 0, failed: 0, skipped: 0 };
+  // المنشورات الفاشلة بتتحاول تاني تلقائي (لحد 3 مرات)
+  await db.from('social_posts').update({ status: 'pending' }).eq('status', 'failed').lt('attempts', 3);
   for (const platform of configuredPlatforms()) {
     const { data: queue } = await db.from('social_posts').select('id,product_id').eq('platform', platform).eq('status', 'pending').order('created_at', { ascending: true }).limit(perPlatform);
     for (const q of queue ?? []) {

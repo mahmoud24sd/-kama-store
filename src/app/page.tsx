@@ -16,26 +16,26 @@ export default async function HomePage() {
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-brand-950 via-brand-800 to-brand-600 text-white">
         <div className="absolute -start-10 -top-10 h-56 w-56 rounded-full bg-accent-400/20 blur-2xl" aria-hidden="true" />
         <div className="absolute -bottom-16 end-10 h-64 w-64 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div className="relative grid gap-6 px-6 py-10 md:grid-cols-2 md:px-12 md:py-16">
+        <div className="relative grid gap-3 px-4 py-4 md:grid-cols-2 md:gap-6 md:px-12 md:py-16">
           <div>
-            <span className="inline-block rounded-full bg-accent-400 px-3 py-1 text-xs font-bold text-gray-900">عروض Kama Store</span>
-            <h1 className="mt-4 text-3xl font-extrabold leading-tight md:text-5xl">تسوّق بذكاء، <br /> ووفّر أكثر</h1>
-            <p className="mt-3 max-w-md text-white/80">اكتشف عروض اليوم وأحدث المنتجات في كل الأقسام، مع شحن مجاني للطلبات فوق 1000 ج.م.</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/products?deals=1" className={`${ui.btnPrimary} px-6 py-3 text-base`}>تسوّق العروض</Link>
-              <Link href="/products" className="inline-flex items-center justify-center rounded-lg border border-white/40 px-6 py-3 text-base font-semibold hover:bg-white/10">
+            <span className="inline-block rounded-full bg-accent-400 px-2.5 py-0.5 text-[11px] font-bold text-gray-900 md:px-3 md:py-1 md:text-xs">عروض Kama Store</span>
+            <h1 className="mt-2 text-xl font-extrabold leading-tight md:mt-4 md:text-5xl">تسوّق بذكاء، <br /> ووفّر أكثر</h1>
+            <p className="mt-1.5 max-w-md text-xs text-white/80 md:mt-3 md:text-base">اكتشف عروض اليوم وأحدث المنتجات في كل الأقسام، مع شحن مجاني للطلبات فوق 1000 ج.م.</p>
+            <div className="mt-3 flex flex-wrap gap-2 md:mt-6 md:gap-3">
+              <Link href="/products?deals=1" className={`${ui.btnPrimary} px-4 py-2 text-sm md:px-6 md:py-3 md:text-base`}>تسوّق العروض</Link>
+              <Link href="/products" className="inline-flex items-center justify-center rounded-lg border border-white/40 px-4 py-2 text-sm font-semibold md:px-6 md:py-3 md:text-base hover:bg-white/10">
                 تصفّح كل المنتجات
               </Link>
             </div>
           </div>
-          <ul className="grid content-center gap-3 text-sm">
+          <ul className="grid content-center gap-1.5 text-xs md:gap-3 md:text-sm">
             {[
               { icon: Truck, text: 'شحن مجاني للطلبات فوق 1000 ج.م' },
               { icon: CreditCard, text: 'الدفع عند الاستلام متاح' },
               { icon: ShieldCheck, text: 'تقييمات من مشترين حقيقيين فقط' },
             ].map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
-                <Icon className="h-6 w-6 text-accent-300" />
+              <li key={text} className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur md:gap-3 md:rounded-xl md:px-4 md:py-3">
+                <Icon className="h-4 w-4 shrink-0 text-accent-300 md:h-6 md:w-6" />
                 {text}
               </li>
             ))}

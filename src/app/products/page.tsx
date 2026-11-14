@@ -61,15 +61,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const title = q ? `نتائج البحث عن "${q}"` : activeCategory ? activeCategory.name : deals ? 'عروض اليوم' : 'كل المنتجات';
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
+    <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <FilterSidebar categories={categories} brands={allBrands} current={{ q, category, brands, min, max, rating, sort, deals }} />
 
-      <section>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm">
+      <section className="min-w-0">
+        <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm">
           <div>
             <h1 className="text-lg font-extrabold">{title}</h1>
           </div>
-          <div className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-1 text-sm [scrollbar-width:none]">
+          <div className="-mx-1 flex w-full min-w-0 items-center sm:w-auto gap-1.5 overflow-x-auto px-1 pb-1 text-sm [scrollbar-width:none]">
             <span className="shrink-0 text-gray-500">ترتيب:</span>
             {SORTS.map((s) => (
               <Link

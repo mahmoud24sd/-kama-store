@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getUser } from '@/lib/auth';
+import { uploadImage } from '@/lib/imageStore';
 import { getPublishSettings } from '@/lib/settings';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { slugify, toNumber } from '@/lib/utils';
@@ -101,10 +102,9 @@ export async function saveSellerProduct(formData: FormData) {
       if (file.size > MAX_IMAGE_BYTES) fail(here, `الصورة ${file.name} أكبر من 5 ميجابايت`);
       const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';
       const path = `${productId}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await db.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) fail(here, 'تعذر رفع الصورة');
-      const { data: pub } = db.storage.from(BUCKET).getPublicUrl(path);
-      await db.from('product_images').insert({ product_id: productId, url: pub.publicUrl, sort_order: order++ });
+      const imageUrl = await uploadImage(db, BUCKET, path, new Uint8Array(await file.arrayBuffer()), file.type);
+      if (!imageUrl) fail(here, 'تعذر رفع الصورة');
+      await db.from('product_images').insert({ product_id: productId, url: imageUrl, sort_order: order++ });
     }
   }
 

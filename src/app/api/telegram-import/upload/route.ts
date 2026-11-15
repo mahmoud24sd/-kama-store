@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getProfile } from '@/lib/auth';
+import { uploadImage } from '@/lib/imageStore';
 import { hasPermission } from '@/lib/permissions';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 
@@ -24,9 +25,9 @@ export async function POST(req: Request) {
     if (file.size > 4 * 1024 * 1024) return NextResponse.json({ error: 'size' }, { status: 413 });
     const db = createAdminClient();
     const path = `telegram/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${ext}`;
-    const { error } = await db.storage.from(BUCKET).upload(path, new Uint8Array(await file.arrayBuffer()), { contentType: file.type, upsert: false });
-    if (error) return NextResponse.json({ error: 'upload' }, { status: 500 });
-    return NextResponse.json({ url: db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl });
+    const url = await uploadImage(db, BUCKET, path, new Uint8Array(await file.arrayBuffer()), file.type);
+    if (!url) return NextResponse.json({ error: 'upload' }, { status: 500 });
+    return NextResponse.json({ url });
   } catch {
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { assertAdmin } from '@/lib/auth';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { removeImages } from '@/lib/imageStore';
 import { enqueueFile, enqueueSocial } from '@/lib/social';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 
@@ -91,8 +92,7 @@ async function purgeProducts(supabase: Awaited<ReturnType<typeof ctx>>['supabase
   for (let i = 0; i < ids.length; i += 100) {
     const chunk = ids.slice(i, i + 100);
     const { data: imgs } = await supabase.from('product_images').select('url').in('product_id', chunk);
-    const paths = (imgs ?? []).map((x) => String(x.url)).map((u) => (u.includes(`/${BUCKET}/`) ? u.slice(u.indexOf(`/${BUCKET}/`) + BUCKET.length + 2) : null)).filter((x): x is string => Boolean(x));
-    if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
+    await removeImages(supabase, BUCKET, (imgs ?? []).map((x) => String(x.url)));
     await supabase.from('products').delete().in('id', chunk);
   }
 }

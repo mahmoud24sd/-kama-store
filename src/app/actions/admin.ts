@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { assertAdmin, assertPermission } from '@/lib/auth';
+import { removeImages, uploadImage } from '@/lib/imageStore';
 import { enqueueSocial } from '@/lib/social';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { slugify, toNumber } from '@/lib/utils';
@@ -48,12 +49,6 @@ function parseVariants(text: string): { variants: VariantInput[]; error?: string
     variants.push({ color: color || null, size: size || null, stock: stockNum, price_override: priceNum, sku: sku || null });
   }
   return { variants };
-}
-
-function storagePathFromUrl(url: string): string | null {
-  const marker = `/${BUCKET}/`;
-  const i = url.indexOf(marker);
-  return i === -1 ? null : url.slice(i + marker.length);
 }
 
 export async function saveProduct(formData: FormData) {
@@ -156,8 +151,7 @@ export async function saveProduct(formData: FormData) {
   const toDelete = formData.getAll('delete_images').map(String).filter(Boolean);
   if (toDelete.length > 0) {
     const { data: imgs } = await supabase.from('product_images').select('id,url').in('id', toDelete).eq('product_id', productId);
-    const paths = (imgs ?? []).map((i) => storagePathFromUrl(i.url as string)).filter((p): p is string => Boolean(p));
-    if (paths.length > 0) await supabase.storage.from(BUCKET).remove(paths);
+    await removeImages(supabase, BUCKET, (imgs ?? []).map((i) => String(i.url)));
     await supabase.from('product_images').delete().in('id', toDelete).eq('product_id', productId);
   }
 
@@ -177,10 +171,9 @@ export async function saveProduct(formData: FormData) {
       if (file.size > MAX_IMAGE_BYTES) fail(`/admin/products/${productId}`, `الصورة ${file.name} أكبر من 5 ميجابايت`);
       const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';
       const path = `${productId}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) fail(`/admin/products/${productId}`, 'تعذر رفع الصورة. تأكد من إنشاء bucket باسم product-images (يتم عبر schema.sql)');
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      await supabase.from('product_images').insert({ product_id: productId, url: pub.publicUrl, sort_order: order++ });
+      const imageUrl = await uploadImage(supabase, BUCKET, path, new Uint8Array(await file.arrayBuffer()), file.type);
+      if (!imageUrl) fail(`/admin/products/${productId}`, 'تعذر رفع الصورة. تأكد من إعدادات التخزين (Supabase أو Backblaze).');
+      await supabase.from('product_images').insert({ product_id: productId, url: imageUrl, sort_order: order++ });
     }
   }
 

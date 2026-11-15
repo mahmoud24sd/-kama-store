@@ -1,5 +1,6 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { after, NextResponse } from 'next/server';
+import { uploadImage } from '@/lib/imageStore';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { csvRow, parseCaption, withMarkup } from '@/lib/telegramParse';
 import { claimMatches } from '@/lib/telegramClaim';
@@ -79,9 +80,7 @@ async function savePhoto(db: Db, fileId: string): Promise<string | null> {
     if (!res.ok) return null;
     const bytes = new Uint8Array(await res.arrayBuffer());
     const objectPath = `telegram/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.jpg`;
-    const { error } = await db.storage.from(BUCKET).upload(objectPath, bytes, { contentType: 'image/jpeg', upsert: false });
-    if (error) return null;
-    return db.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl;
+    return await uploadImage(db, BUCKET, objectPath, bytes, 'image/jpeg');
   } catch {
     return null;
   }
@@ -104,8 +103,7 @@ async function uploadFromUrl(db: Db, url: string): Promise<string | null> {
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (bytes.length > 5 * 1024 * 1024) return null;
     const objectPath = `telegram/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${ext}`;
-    const { error } = await db.storage.from(BUCKET).upload(objectPath, bytes, { contentType: type.startsWith('image/') ? type : 'image/jpeg', upsert: false });
-    return error ? null : db.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl;
+    return await uploadImage(db, BUCKET, objectPath, bytes, type.startsWith('image/') ? type : 'image/jpeg');
   } catch {
     return null;
   }

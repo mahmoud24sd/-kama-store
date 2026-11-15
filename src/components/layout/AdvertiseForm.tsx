@@ -1,12 +1,13 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { submitAdRequest, type AdState } from '@/app/actions/ads';
 import { AD_TYPES } from '@/lib/adTypes';
 import { ui } from '@/lib/ui';
 
 export default function AdvertiseForm() {
   const [state, action, pending] = useActionState(submitAdRequest, {} as AdState);
+  const [type, setType] = useState('');
   if (state.ok) {
     return <p className={ui.alertOk}>وصلنا طلبك، وسنتواصل معك قريبًا لتأكيد التفاصيل. شكرًا لك.</p>;
   }
@@ -28,11 +29,17 @@ export default function AdvertiseForm() {
       </div>
       <div>
         <label htmlFor="ad_type" className={ui.label}>نوع الإعلان</label>
-        <select id="ad_type" name="ad_type" required defaultValue="" className={ui.input}>
+        <select id="ad_type" name="ad_type" required value={type} onChange={(e) => setType(e.target.value)} className={ui.input}>
           <option value="" disabled>اختر نوع الإعلان</option>
           {AD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
+      {type === 'أخرى' && (
+        <div>
+          <label htmlFor="other_desc" className={ui.label}>اكتب وصف الإعلان اللي عايزه</label>
+          <textarea id="other_desc" name="other_desc" required minLength={3} maxLength={1000} rows={3} placeholder="مثال: عايز إعلان فيديو قصير على صفحتكم لمدة أسبوع..." className={ui.input} />
+        </div>
+      )}
       <div>
         <label htmlFor="ad_price" className={ui.label}>سعر الإعلان الذي تقترحه (ج.م)</label>
         <input id="ad_price" name="ad_price" type="number" required min={0} step="1" inputMode="numeric" dir="ltr" className={ui.input} />

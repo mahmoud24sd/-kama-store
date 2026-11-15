@@ -20,6 +20,7 @@ export async function submitAdRequest(_prev: AdState, formData: FormData): Promi
       ad_type: z.enum(AD_TYPES, { message: 'اختر نوع الإعلان' }),
       ad_price: z.coerce.number({ message: 'أدخل سعر الإعلان' }).min(0, 'السعر غير صالح').max(100000000, 'السعر كبير جدًا'),
       message: z.string().trim().max(2000),
+      other_desc: z.string().trim().max(1000),
     })
     .safeParse({
       name: formData.get('name') ?? '',
@@ -28,9 +29,13 @@ export async function submitAdRequest(_prev: AdState, formData: FormData): Promi
       ad_type: formData.get('ad_type') ?? '',
       ad_price: formData.get('ad_price') ?? '',
       message: formData.get('message') ?? '',
+      other_desc: formData.get('other_desc') ?? '',
     });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  if (d.ad_type === 'أخرى' && d.other_desc.length < 3) return { error: 'اكتب وصف الإعلان اللي عايزه (اخترت «أخرى»)' };
+  // وصف النوع «أخرى» يتحفظ أول الرسالة عشان يظهر للأدمن في صفحة الطلبات
+  if (d.ad_type === 'أخرى') d.message = `وصف الإعلان المطلوب: ${d.other_desc}${d.message ? '\n' + d.message : ''}`;
   const FAIL = 'تعذّر إرسال الطلب الآن. حاول لاحقًا أو تواصل معنا مباشرة.';
 
   try {

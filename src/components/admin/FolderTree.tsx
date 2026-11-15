@@ -45,7 +45,7 @@ export default function FolderTree({ folders, noticeFolder, notice, ...card }: P
             </summary>
             <div className="space-y-2 border-t border-gray-100 p-2">
               {[...days.entries()].map(([d, list]) => (
-                <details key={d} open={targetDay ? d === targetDay : monthOpen && d === firstDay && m === firstMonth} className="rounded-lg border border-gray-100 bg-gray-50">
+                <details key={d} open={targetDay ? d === targetDay : m === firstMonth} className="rounded-lg border border-gray-100 bg-gray-50">
                   <summary className="cursor-pointer select-none px-3 py-1.5 text-sm font-bold">
                     📅 {dayLabel(d)} <span className="font-normal text-gray-500">· {list.length} فولدر · {prods(list)} منتج</span>
                   </summary>
@@ -56,7 +56,7 @@ export default function FolderTree({ folders, noticeFolder, notice, ...card }: P
                           👤 {admin} <span className="font-normal text-gray-500">· {items.length} فولدر · {prods(items)} منتج</span>
                         </h4>
                         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                          {items.map((f) => <FolderCard key={f.id} f={f} notice={noticeFolder === f.id ? notice : undefined} {...card} />)}
+                          {items.map((f) => <FolderCard key={f.id} f={f} expanded={d === firstDay && m === firstMonth} notice={noticeFolder === f.id ? notice : undefined} {...card} />)}
                         </div>
                       </section>
                     ))}

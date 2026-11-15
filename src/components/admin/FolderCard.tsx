@@ -7,7 +7,7 @@ import { ui } from '@/lib/ui';
 type Cat = { id: string; name: string };
 
 /** ملف = فولدر: عنوان (اسم، عدد، وقت الرفع، مين رفع)، أزرار، منتجاته جواه، وتعديل جماعي للقسم والسعر وغيره */
-export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraft, canTrash, notice }: { f: Folder; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean; notice?: string }) {
+export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraft, canTrash, notice, expanded }: { f: Folder; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean; notice?: string; expanded?: boolean }) {
   const hidden = (
     <>
       <input type="hidden" name="id" value={f.id} />
@@ -40,7 +40,7 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
         </div>
       </div>
 
-      <details open={Boolean(notice)} className="rounded-lg border border-gray-200">
+      <details open={Boolean(notice) || Boolean(expanded)} className="rounded-lg border border-gray-200">
         <summary className="cursor-pointer px-2 py-1 text-xs font-bold">📂 فتح الفولدر ({f.count} منتج)</summary>
         <div className="grid max-h-72 grid-cols-3 gap-1.5 overflow-y-auto p-1.5 sm:grid-cols-4 lg:grid-cols-5">
           {f.products.map((p) => (

@@ -82,8 +82,9 @@ export async function restoreFile(formData: FormData) {
   const id = fileId(formData);
   if (!id.success) return back('/admin/trash');
   await supabase.from('products').update({ deleted_at: null }).eq('file_id', id.data);
-  await supabase.from('product_files').update({ deleted_at: null }).eq('id', id.data);
-  return back('/admin/trash', 'اترجع الملف كمسودة');
+  await supabase.from('product_files').update({ deleted_at: null, is_public: false }).eq('id', id.data);
+  await supabase.from('product_files').update({ stage: 'draft' }).eq('id', id.data); // يظهر في المسودات مش في المنشور/الملفات الجديدة
+  return back('/admin/trash', 'اترجع الملف كمسودة، هتلاقيه في صفحة المسودات');
 }
 
 async function purgeProducts(supabase: Awaited<ReturnType<typeof ctx>>['supabase'], ids: string[]) {

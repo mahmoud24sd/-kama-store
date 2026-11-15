@@ -61,7 +61,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const title = q ? `نتائج البحث عن "${q}"` : activeCategory ? activeCategory.name : deals ? 'عروض اليوم' : 'كل المنتجات';
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start">
       <FilterSidebar categories={categories} brands={allBrands} current={{ q, category, brands, min, max, rating, sort, deals }} />
 
       <section className="min-w-0">

@@ -14,21 +14,21 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
   const topLevel = categories.filter((c) => !c.parent_id);
 
   const body = (
-    <form action="/products" method="get" className="space-y-5 text-sm">
+    <form action="/products" method="get" className="space-y-4 text-sm">
       {current.q && <input type="hidden" name="q" value={current.q} />}
       {current.sort && <input type="hidden" name="sort" value={current.sort} />}
 
       <div>
-        <h3 className="mb-2 font-bold">القسم</h3>
-        <ul className="space-y-1">
+        <h3 className="mb-1.5 border-b border-gray-100 pb-1 font-extrabold text-brand-800">القسم</h3>
+        <ul className="space-y-0.5">
           <li>
-            <label className="flex cursor-pointer items-center gap-2">
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
               <input type="radio" name="category" value="" defaultChecked={!current.category} /> الكل
             </label>
           </li>
           {topLevel.map((c) => (
             <li key={c.id}>
-              <label className="flex cursor-pointer items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
                 <input type="radio" name="category" value={c.slug} defaultChecked={current.category === c.slug} /> {c.name}
               </label>
             </li>
@@ -37,7 +37,7 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
       </div>
 
       <div>
-        <h3 className="mb-2 font-bold">السعر (ج.م)</h3>
+        <h3 className="mb-1.5 border-b border-gray-100 pb-1 font-extrabold text-brand-800">السعر (ج.م)</h3>
         <div className="flex items-center gap-2">
           <input type="number" name="min" min={0} placeholder="من" defaultValue={current.min} className={ui.input} aria-label="السعر من" />
           <span>–</span>
@@ -46,11 +46,11 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
       </div>
 
       <div>
-        <h3 className="mb-2 font-bold">التقييم</h3>
-        <ul className="space-y-1">
+        <h3 className="mb-1.5 border-b border-gray-100 pb-1 font-extrabold text-brand-800">التقييم</h3>
+        <ul className="space-y-0.5">
           {[0, 4, 3, 2].map((r) => (
             <li key={r}>
-              <label className="flex cursor-pointer items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
                 <input type="radio" name="rating" value={r === 0 ? '' : r} defaultChecked={(current.rating ?? 0) === r} />
                 {r === 0 ? 'الكل' : `${r} نجوم فأكثر`}
               </label>
@@ -61,11 +61,11 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
 
       {brands.length > 0 && (
         <div>
-          <h3 className="mb-2 font-bold">العلامة التجارية</h3>
+          <h3 className="mb-1.5 border-b border-gray-100 pb-1 font-extrabold text-brand-800">العلامة التجارية</h3>
           <ul className="max-h-48 space-y-1 overflow-y-auto">
             {brands.map((b) => (
               <li key={b}>
-                <label className="flex cursor-pointer items-center gap-2" dir="auto">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300" dir="auto">
                   <input type="checkbox" name="brand" value={b} defaultChecked={current.brands.includes(b)} /> {b}
                 </label>
               </li>
@@ -74,7 +74,7 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
         </div>
       )}
 
-      <label className="flex cursor-pointer items-center gap-2 font-semibold">
+      <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300 font-semibold">
         <input type="checkbox" name="deals" value="1" defaultChecked={current.deals} /> العروض فقط
       </label>
 
@@ -87,13 +87,13 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
 
   return (
     <aside>
-      <details className="rounded-xl bg-white p-4 shadow-sm lg:hidden">
+      <details className="rounded-xl bg-white p-4 shadow-sm md:hidden">
         <summary className="flex cursor-pointer items-center gap-2 font-bold">
           <SlidersHorizontal className="h-5 w-5" /> الفلاتر
         </summary>
         <div className="mt-4">{body}</div>
       </details>
-      <div className="hidden rounded-xl bg-white p-4 shadow-sm lg:block">{body}</div>
+      <div className="hidden max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-brand-100 bg-white p-3 shadow-sm md:sticky md:top-24 md:block">{body}</div>
     </aside>
   );
 }

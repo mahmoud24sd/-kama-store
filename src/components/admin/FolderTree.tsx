@@ -10,7 +10,7 @@ const dayLabel = (key: string) => new Date(`${key}T12:00:00Z`).toLocaleDateStrin
 /** فولدرات اليوم مجمّعة حسب الأدمن اللي رفعها (الأحدث نشرًا أولًا جوه كل أدمن) */
 function byAdmin(list: Folder[]): [string, Folder[]][] {
   const m = new Map<string, Folder[]>();
-  for (const f of list) m.set(f.by, [...(m.get(f.by) ?? []), f]);
+  for (const f of list) m.set(f.publisher, [...(m.get(f.publisher) ?? []), f]);
   return [...m.entries()];
 }
 
@@ -51,14 +51,14 @@ export default function FolderTree({ folders, noticeFolder, notice, ...card }: P
                   </summary>
                   <div className="space-y-2 p-2">
                     {byAdmin(list).map(([admin, items]) => (
-                      <section key={admin}>
-                        <h4 className="mb-1 flex items-center gap-1 text-xs font-bold text-brand-800">
-                          👤 {admin} <span className="font-normal text-gray-500">· {items.length} فولدر · {prods(items)} منتج</span>
-                        </h4>
-                        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                          {items.map((f) => <FolderCard key={f.id} f={f} expanded={d === firstDay && m === firstMonth} notice={noticeFolder === f.id ? notice : undefined} {...card} />)}
+                      <details key={admin} open={targetDay ? items.some((f) => f.id === noticeFolder) : d === firstDay && m === firstMonth} className="rounded-lg border border-brand-200 bg-white">
+                        <summary className="cursor-pointer select-none px-3 py-1.5 text-sm font-bold text-brand-800">
+                          👤 {admin} <span className="font-normal text-gray-500">· نشر {items.length} فولدر · {prods(items)} منتج</span>
+                        </summary>
+                        <div className="grid gap-2 p-2 md:grid-cols-2 xl:grid-cols-3">
+                          {items.map((f) => <FolderCard key={f.id} f={f} notice={noticeFolder === f.id ? notice : undefined} {...card} />)}
                         </div>
-                      </section>
+                      </details>
                     ))}
                   </div>
                 </details>

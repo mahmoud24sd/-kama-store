@@ -20,6 +20,11 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <Link href={`/admin/products/files/${f.id}`} className="text-sm font-extrabold text-brand-600 hover:underline">📁 {f.name}</Link>
+          {f.stage !== undefined || back === '/admin/files' ? (
+            <span className={`ms-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${f.is_public ? 'bg-green-100 text-green-800' : f.stage === 'draft' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}`}>
+              {f.is_public ? '✅ منشور' : f.stage === 'draft' ? '📝 مسودة' : '🆕 جديد'}
+            </span>
+          ) : null}
           <p className="text-xs text-gray-600">
             {f.count} منتج · {f.source === 'bot' ? 'من بوت تليجرام' : 'ملف مرفوع'}
           </p>

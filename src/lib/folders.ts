@@ -3,14 +3,14 @@ import type { createClient } from '@/lib/supabase/server';
 
 type Sb = Awaited<ReturnType<typeof createClient>>;
 export type FolderProduct = { id: string; name: string; price: number; is_active: boolean; img?: string; category?: string; brand?: string; shop?: string };
-export type Folder = { id: string; name: string; source: string; markup: number; is_public: boolean; created_at: string; published_at: string; by: string; publisher: string; products: FolderProduct[]; count: number };
-export type FolderKind = 'inbox' | 'draft' | 'public';
+export type Folder = { id: string; name: string; source: string; markup: number; is_public: boolean; created_at: string; published_at: string; stage?: string; by: string; publisher: string; products: FolderProduct[]; count: number };
+export type FolderKind = 'inbox' | 'draft' | 'public' | 'bot'; // bot = كل ملفات البوت بغض النظر عن المرحلة
 
 /** الملفات كفولدرات: بمنتجاتها، ووقت الرفع، واسم اللي رفع (أدمن الموقع أو أدمن البوت) */
 export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size = 10, perFolder = 60) {
   const base = () => supabase.from('product_files').select('id,name,source,markup,is_public,created_at,created_by,tg_by', { count: 'exact' }).is('deleted_at', null).order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * size, page * size - 1);
-  let res = await base().eq('stage', kind);
-  const noStage = Boolean(res.error);
+  let res = kind === 'bot' ? await base().eq('source', 'bot') : await base().eq('stage', kind);
+  const noStage = kind !== 'bot' && Boolean(res.error);
   if (noStage) res = kind === 'public' ? await base().eq('is_public', true) : kind === 'inbox' ? await base().eq('source', 'bot').eq('is_public', false) : await base().eq('is_public', false).neq('source', 'bot');
   const files = (res.data ?? []) as { id: string; name: string; source: string; markup: number; is_public: boolean; created_at: string; created_by: string | null; tg_by: number | null }[];
 
@@ -41,6 +41,12 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
         byFile.set(fid, list);
       }
     }
+  }
+
+  const stages = new Map<string, string>();
+  if (kind === 'bot' && files.length) {
+    const { data } = await supabase.from('product_files').select('id,stage').in('id', files.map((f) => f.id));
+    for (const r of data ?? []) if (r.stage) stages.set(r.id as string, r.stage as string);
   }
 
   // أسماء اللي رفع
@@ -80,6 +86,7 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
     is_public: f.is_public,
     created_at: f.created_at,
     published_at: pubAt.get(f.id) ?? f.created_at,
+    stage: stages.get(f.id),
     publisher: (pubBy.get(f.id) && names.get(`u:${pubBy.get(f.id)}`)) || (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
     by: (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
     products: byFile.get(f.id) ?? [],

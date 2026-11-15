@@ -51,7 +51,7 @@ export default function FolderTree({ folders, noticeFolder, notice, ...card }: P
                   </summary>
                   <div className="space-y-2 p-2">
                     {byAdmin(list).map(([admin, items]) => (
-                      <details key={admin} open={targetDay ? items.some((f) => f.id === noticeFolder) : d === firstDay && m === firstMonth} className="rounded-lg border border-brand-200 bg-white">
+                      <details key={admin} open={items.some((f) => f.id === noticeFolder)} className="rounded-lg border border-brand-200 bg-white">
                         <summary className="cursor-pointer select-none px-3 py-1.5 text-sm font-bold text-brand-800">
                           👤 {admin} <span className="font-normal text-gray-500">· نشر {items.length} فولدر · {prods(items)} منتج</span>
                         </summary>

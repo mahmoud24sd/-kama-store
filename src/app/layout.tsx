@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: { default: 'Kama Store — تسوق أونلاين', template: '%s | Kama Store' },
   description: 'Kama Store: متجر إلكتروني لكل احتياجاتك بأسعار مميزة وشحن سريع.',
   applicationName: 'Kama Store',
+  verification: { google: '5ruHvNNcFcUfq-334AXvwwwHV3oMvMfoGFz5RtWJgio' },
   icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'Kama Store', statusBarStyle: 'default' },
 };

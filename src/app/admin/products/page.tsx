@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { bulkPublish, bulkDraft, bulkTrash } from '@/app/actions/productFiles';
-import FolderCard from '@/components/admin/FolderCard';
+import FolderTree from '@/components/admin/FolderTree';
 import Pagination, { pageNum } from '@/components/admin/Pagination';
 import SelectAll from '@/components/admin/SelectAll';
 import { loadFolders } from '@/lib/folders';
@@ -27,7 +27,6 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
 
   const term = sp.q?.replace(/[,()%_\\*]/g, ' ').trim();
   const pp = pageNum(sp.pp);
-  const fp = pageNum(sp.fp);
   const build = (withDeleted: boolean, loose: boolean) => {
     let q = supabase
       .from('products')
@@ -46,7 +45,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   const products = (res.data ?? []) as unknown as Row[];
 
   const fileName = new Map<string, string>();
-  const folderData = term ? { folders: [], total: 0 } : await loadFolders(supabase, 'public', fp);
+  const folderData = term ? { folders: [], total: 0 } : await loadFolders(supabase, 'public', 1, 300, 12);
   const folders = folderData.folders;
   const looseTotal = res.count ?? products.length;
   const cats = folders.length > 0 ? await getCategories() : [];
@@ -70,12 +69,9 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
 
       {folders.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-extrabold">📁 الفولدرات المنشورة ({folders.length})</h2>
+          <h2 className="font-extrabold">📁 الفولدرات المنشورة ({folders.length}) — مرتبة بالشهر واليوم</h2>
           <p className="text-xs text-gray-600">افتح الفولدر تشوف المنتجات، وعدّل القسم والعلامة والمحل والسعر لكلها مرة واحدة.</p>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} />)}
-          </div>
-          <Pagination total={folderData.total} page={fp} param="fp" sp={sp} base="/admin/products" />
+          <FolderTree folders={folders} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} noticeFolder={sp.folder} notice={sp.msg} />
         </section>
       )}
       {folders.length > 0 && <h2 className="font-extrabold">منتجات برّه الفولدرات ({looseTotal})</h2>}

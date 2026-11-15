@@ -3,11 +3,11 @@ import type { createClient } from '@/lib/supabase/server';
 
 type Sb = Awaited<ReturnType<typeof createClient>>;
 export type FolderProduct = { id: string; name: string; price: number; is_active: boolean; img?: string; category?: string; brand?: string; shop?: string };
-export type Folder = { id: string; name: string; source: string; markup: number; is_public: boolean; created_at: string; by: string; products: FolderProduct[]; count: number };
+export type Folder = { id: string; name: string; source: string; markup: number; is_public: boolean; created_at: string; published_at: string; by: string; products: FolderProduct[]; count: number };
 export type FolderKind = 'inbox' | 'draft' | 'public';
 
 /** الملفات كفولدرات: بمنتجاتها، ووقت الرفع، واسم اللي رفع (أدمن الموقع أو أدمن البوت) */
-export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size = 10) {
+export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size = 10, perFolder = 60) {
   const base = () => supabase.from('product_files').select('id,name,source,markup,is_public,created_at,created_by,tg_by', { count: 'exact' }).is('deleted_at', null).order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * size, page * size - 1);
   let res = await base().eq('stage', kind);
   const noStage = Boolean(res.error);
@@ -16,10 +16,11 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
 
   const byFile = new Map<string, FolderProduct[]>();
   const counts = new Map<string, number>();
+  const pubAt = new Map<string, string>();
   if (files.length) {
     const { data } = await supabase
       .from('products')
-      .select('id,name,price,is_active,file_id,brand,shop_name,categories(name),product_images(url,sort_order)')
+      .select('id,name,price,is_active,file_id,brand,shop_name,published_at,categories(name),product_images(url,sort_order)')
       .in('file_id', files.map((f) => f.id))
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -27,8 +28,10 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
     for (const p of data ?? []) {
       const fid = p.file_id as string;
       counts.set(fid, (counts.get(fid) ?? 0) + 1);
+      const pa = p.published_at as string | null;
+      if (pa && pa > (pubAt.get(fid) ?? '')) pubAt.set(fid, pa);
       const list = byFile.get(fid) ?? [];
-      if (list.length < 60) {
+      if (list.length < perFolder) {
         const imgs = [...((p.product_images as { url: string; sort_order: number }[]) ?? [])].sort((a, b) => a.sort_order - b.sort_order);
         list.push({ id: p.id as string, name: p.name as string, price: Number(p.price), is_active: Boolean(p.is_active), img: imgs[0]?.url, category: (p.categories as unknown as { name: string } | null)?.name, brand: (p.brand as string | null) ?? undefined, shop: (p.shop_name as string | null) ?? undefined });
         byFile.set(fid, list);
@@ -72,6 +75,7 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
     markup: Number(f.markup),
     is_public: f.is_public,
     created_at: f.created_at,
+    published_at: pubAt.get(f.id) ?? f.created_at,
     by: (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
     products: byFile.get(f.id) ?? [],
     count: counts.get(f.id) ?? 0,

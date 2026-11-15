@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { bulkDraft, bulkTrash } from '@/app/actions/productFiles';
 import Pagination, { pageNum } from '@/components/admin/Pagination';
-import FolderCard from '@/components/admin/FolderCard';
+import FolderTree from '@/components/admin/FolderTree';
 import { loadFolders } from '@/lib/folders';
 import { getCategories } from '@/lib/queries';
 import ProductPick from '@/components/admin/ProductPick';
@@ -16,7 +16,7 @@ export default async function PublishedPage({ searchParams }: { searchParams: Pr
   const { supabase, profile } = await requirePermission('published');
   const sp = await searchParams;
   const { rows, total, missing, fileNames } = await loadList(supabase, true, pageNum(sp.pp));
-  const { folders, total: folderTotal } = await loadFolders(supabase, 'public', pageNum(sp.fp));
+  const { folders } = await loadFolders(supabase, 'public', 1, 300, 12);
   const cats = await getCategories();
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
   const canDraft = (['products', 'bot_publish', 'drafts'] as const).some((k) => hasPermission(profile, k));
@@ -30,10 +30,7 @@ export default async function PublishedPage({ searchParams }: { searchParams: Pr
       {folders.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-bold">📁 فولدرات ({folders.length})</h2>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {folders.map((f) => <FolderCard key={f.id} notice={sp.folder === f.id ? sp.msg : undefined} f={f} back="/admin/published" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canDraft} canTrash={canTrash} />)}
-          </div>
-          <Pagination total={folderTotal} page={pageNum(sp.fp)} param="fp" sp={sp} base="/admin/published" />
+          <FolderTree folders={folders} back="/admin/published" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canDraft} canTrash={canTrash} noticeFolder={sp.folder} notice={sp.msg} />
         </section>
       )}
       <h2 className="font-bold">المنتجات ({total})</h2>

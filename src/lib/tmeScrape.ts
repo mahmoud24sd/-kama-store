@@ -52,19 +52,23 @@ export async function fetchChannelPage(channel: string, before?: number): Promis
 export function groupPosts(posts: TmePost[]): TmePost[] {
   const sorted = [...posts].sort((a, b) => a.time - b.time || a.id - b.id);
   const out: TmePost[] = [];
-  let pending: TmePost[] = [];
+  let pending: TmePost[] = []; // صور بلا نص لسه مستنية نص قريب منها
   for (const p of sorted) {
     if (!p.text && p.photos.length > 0) {
       const last = out[out.length - 1];
+      const prev = pending[pending.length - 1];
       if (last && p.time - last.time <= 5000) last.photos.push(...p.photos);
-      else pending.push(p);
+      else if (prev && p.time - prev.time <= 5000) prev.photos.push(...p.photos);
+      else pending.push({ ...p, photos: [...p.photos] });
       continue;
     }
     if (!p.text) continue;
     const near = pending.filter((x) => p.time - x.time <= 5000);
-    const cur: TmePost = { ...p, photos: [...near.flatMap((x) => x.photos), ...p.photos] };
+    // صور بعيدة عن أي نص = منتج مستقل من غير كلام (مانضيعهاش)
+    for (const x of pending) if (!near.includes(x)) out.push(x);
     pending = [];
-    out.push(cur);
+    out.push({ ...p, photos: [...near.flatMap((x) => x.photos), ...p.photos] });
   }
-  return out;
+  for (const x of pending) out.push(x);
+  return out.sort((a, b) => a.time - b.time || a.id - b.id);
 }

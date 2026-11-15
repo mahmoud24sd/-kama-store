@@ -51,7 +51,7 @@ async function setVisibility(formData: FormData, pub: boolean) {
   if (!id.success) return back(where(formData));
   await supabase.from('product_files').update({ is_public: pub }).eq('id', id.data);
   await supabase.from('product_files').update({ stage: pub ? 'public' : 'draft' }).eq('id', id.data);
-  await supabase.from('products').update({ is_active: pub }).eq('file_id', id.data).is('deleted_at', null);
+  { let u = supabase.from('products').update({ is_active: pub }).eq('file_id', id.data).is('deleted_at', null); if (pub) u = u.gt('price', 0); await u; } // منتج بسعر 0 مايظهرش للعملاء
   if (pub) {
     const now = new Date().toISOString();
     await supabase.from('products').update({ published_by: profile.id, published_at: now }).eq('file_id', id.data).is('deleted_at', null);
@@ -117,7 +117,7 @@ async function runBulk(formData: FormData, op: string) {
   if (!ids.success || ids.data.length === 0) return back(to, 'حدّد منتج واحد على الأقل');
   const now = new Date().toISOString();
   if (op === 'publish') {
-    await supabase.from('products').update({ is_active: true, published_by: profile.id, published_at: now }).in('id', ids.data).is('deleted_at', null);
+    await supabase.from('products').update({ is_active: true, published_by: profile.id, published_at: now }).in('id', ids.data).is('deleted_at', null).gt('price', 0);
     if (hasServiceRole) await enqueueSocial(createAdminClient(), ids.data);
     return back(to, `${ids.data.length} منتج ظاهر للعلن`);
   }

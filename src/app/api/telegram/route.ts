@@ -113,7 +113,7 @@ const channelChatId = (channel: string) => -(parseInt(createHash('sha1').update(
 
 async function finishJob(db: Db, job: Job, by: number) {
   await db.from('telegram_state').delete().in('key', [`job:${by}`, `cand:${by}`]);
-  await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (فيه اسم وسعر وصورة).`);
+  await say(job.chat, `خلّصت قناة @${job.channel}: اتحفظ ${job.collected} منتج (أي منشور فيه صورة). اللي مالوش سعر بيتحفظ بسعر 0 كمسودة، عدّله قبل النشر.`);
   if (job.collected > 0) {
     await uploadToSite(db, job.chat, by, false).catch(() => null);
     await keyboard(job.chat, 'وتقدر كمان تاخد ملف:', [[{ text: '📊 إكسل', data: 'exp:all:xlsx' }, { text: '🧾 JSON', data: 'exp:all:json' }]]);
@@ -140,7 +140,7 @@ async function runTop(db: Db, by: number, job: Job) {
       job.scanned = (job.scanned ?? 0) + posts.length;
       for (const g of groupPosts(posts)) {
         const parsed = parseCaption(g.text);
-        if (!parsed.name || parsed.price === null || g.photos.length === 0) continue;
+        if (g.photos.length === 0) continue; // بنحفظ أي منشور فيه صورة، حتى لو من غير اسم أو سعر
         cands.push({ id: g.id, time: g.time, text: g.text.slice(0, 800), photos: g.photos.slice(0, 4), url: g.url, views: g.views });
       }
       cands.sort((a, b) => b.views - a.views);
@@ -162,9 +162,9 @@ async function runTop(db: Db, by: number, job: Job) {
     await Promise.all(batch.map(async (g) => {
       const parsed = parseCaption(g.text);
       const urls = (await Promise.all(g.photos.map((u) => uploadFromUrl(db, u)))).filter((u): u is string => Boolean(u));
-      if (!parsed.name || parsed.price === null || urls.length === 0) return;
+      if (urls.length === 0) return;
       const { error } = await db.from('telegram_items').upsert(
-        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url, added_by: by },
+        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name || `منتج ${g.id}`, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url, added_by: by },
         { onConflict: 'chat_id,message_id,added_by', ignoreDuplicates: true },
       );
       if (!error) job.collected += 1;
@@ -198,11 +198,11 @@ async function runJob(db: Db, by: number) {
     const grouped = groupPosts(inRange);
     for (const g of grouped) {
       const parsed = parseCaption(g.text);
-      if (!parsed.name || parsed.price === null || g.photos.length === 0) continue;
+      if (g.photos.length === 0) continue; // بنحفظ أي منشور فيه صورة، حتى لو من غير اسم أو سعر
       const urls = (await Promise.all(g.photos.slice(0, 4).map((u) => uploadFromUrl(db, u)))).filter((u): u is string => Boolean(u));
       if (urls.length === 0) continue;
       const { error } = await db.from('telegram_items').upsert(
-        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url, added_by: by },
+        { chat_id: channelChatId(job.channel), message_id: g.id, source: `@${job.channel}`, name: parsed.name || `منتج ${g.id}`, description: parsed.description || null, price: parsed.price, images: urls, posted_at: new Date(g.time).toISOString(), post_url: g.url, added_by: by },
         { onConflict: 'chat_id,message_id,added_by', ignoreDuplicates: true },
       );
       if (!error) job.collected += 1;
@@ -288,7 +288,7 @@ async function readyItems(db: Db, by: number, all: boolean) {
   const fixed = Number(await getState(db, 'fixed', '0'));
   const category = (await getState(db, `category:${by}`, '')) || (await getState(db, 'category', '')); // قسم كل أدمن، وإلا القسم العام
   const publish = (await getState(db, 'publish', 'no')) === 'yes';
-  const ready = items.filter((i) => i.price != null && i.name && (i.images as string[]).length > 0);
+  const ready = items.filter((i) => i.name && (i.images as string[]).length > 0);
   return { ready, skipped: items.length - ready.length, markup, fixed, category, publish };
 }
 
@@ -298,7 +298,7 @@ const noteOf = (i: Record<string, unknown>) =>
 function buildFile(chunk: Record<string, unknown>[], st: { markup: number; fixed: number; category: string; publish: boolean }, fmt: Fmt): { data: Buffer | string; ext: string; mime: string } {
   const objs = chunk.map((i) => ({
     name: i.name as string,
-    price: withMarkup(Number(i.price), st.markup) + st.fixed,
+    price: i.price == null ? 0 : withMarkup(Number(i.price), st.markup) + st.fixed,
     compare_at_price: '',
     stock: 10,
     category: st.category,
@@ -373,8 +373,8 @@ async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
       if (keep.length === 0) continue;
       const now = new Date().toISOString();
       const rows = keep.map(({ it, dup }) => {
-        const base = withMarkup(Number(it.price), st.markup);
-        return { name: String(it.name).slice(0, 200), slug: `${slugify(String(it.name)) || 'p'}-${Math.random().toString(36).slice(2, 8)}`, description: (it.description as string) || null, price: base + st.fixed, base_price: base, stock: 10, is_active: false, category_id: categoryId, file_id: file.id as string, ...(dup ? { deleted_at: now, trash_reason: 'متكرر' } : {}) };
+        const base = it.price == null ? 0 : withMarkup(Number(it.price), st.markup);
+        return { name: String(it.name).slice(0, 200), slug: `${slugify(String(it.name)) || 'p'}-${Math.random().toString(36).slice(2, 8)}`, description: (it.description as string) || null, price: it.price == null ? 0 : base + st.fixed, base_price: base, stock: 10, is_active: false, category_id: categoryId, file_id: file.id as string, ...(dup ? { deleted_at: now, trash_reason: 'متكرر' } : {}) };
       });
       const { data: ins, error } = await db.from('products').insert(rows).select('id,slug');
       if (error || !ins) continue;
@@ -382,7 +382,7 @@ async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
       const live = keep.filter((x) => !x.dup);
       const imgs = keep.flatMap(({ it, dup }, n) => { const pid = idBySlug.get(rows[n].slug); return pid && !dup ? (it.images as string[]).map((url, o) => ({ product_id: pid, url, sort_order: o })) : []; });
       if (imgs.length) await db.from('product_images').insert(imgs);
-      const priv = keep.flatMap(({ it, dup }, n) => { const pid = idBySlug.get(rows[n].slug); return pid && !dup ? [{ product_id: pid, cost_price: Number(it.price), supplier: (it.source as string) || null, notes: noteOf(it) }] : []; });
+      const priv = keep.flatMap(({ it, dup }, n) => { const pid = idBySlug.get(rows[n].slug); return pid && !dup ? [{ product_id: pid, cost_price: it.price == null ? 0 : Number(it.price), supplier: (it.source as string) || null, notes: noteOf(it) }] : []; });
       if (priv.length) await db.from('product_private').insert(priv);
       saved += live.length;
       await db.from('telegram_items').update({ exported_at: now }).in('id', part.map((x) => x.id as string));

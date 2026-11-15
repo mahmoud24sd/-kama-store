@@ -29,15 +29,13 @@ export default function FolderTree({ folders, noticeFolder, notice, ...card }: P
   }
   const target = noticeFolder ? sorted.find((f) => f.id === noticeFolder) : undefined;
   const targetDay = target ? dayKey(target.published_at) : undefined;
-  const firstMonth = [...months.keys()][0];
   const count = (days: Map<string, Folder[]>) => [...days.values()].reduce((n, l) => n + l.length, 0);
   const prods = (l: Folder[]) => l.reduce((n, f) => n + f.count, 0);
 
   return (
     <div className="space-y-2">
       {[...months.entries()].map(([m, days]) => {
-        const monthOpen = targetDay ? targetDay.startsWith(m) : m === firstMonth;
-        const firstDay = [...days.keys()][0];
+        const monthOpen = Boolean(targetDay && targetDay.startsWith(m));
         return (
           <details key={m} open={monthOpen} className="rounded-xl border border-gray-200 bg-white">
             <summary className="cursor-pointer select-none px-3 py-2 text-sm font-extrabold">
@@ -45,7 +43,7 @@ export default function FolderTree({ folders, noticeFolder, notice, ...card }: P
             </summary>
             <div className="space-y-2 border-t border-gray-100 p-2">
               {[...days.entries()].map(([d, list]) => (
-                <details key={d} open={targetDay ? d === targetDay : m === firstMonth} className="rounded-lg border border-gray-100 bg-gray-50">
+                <details key={d} open={d === targetDay} className="rounded-lg border border-gray-100 bg-gray-50">
                   <summary className="cursor-pointer select-none px-3 py-1.5 text-sm font-bold">
                     📅 {dayLabel(d)} <span className="font-normal text-gray-500">· {list.length} فولدر · {prods(list)} منتج</span>
                   </summary>

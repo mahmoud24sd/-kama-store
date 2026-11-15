@@ -7,6 +7,13 @@ const dayKey = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { time
 const monthLabel = (key: string) => new Date(`${key}-15T12:00:00Z`).toLocaleDateString('ar-EG', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const dayLabel = (key: string) => new Date(`${key}T12:00:00Z`).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
+/** فولدرات اليوم مجمّعة حسب الأدمن اللي رفعها (الأحدث نشرًا أولًا جوه كل أدمن) */
+function byAdmin(list: Folder[]): [string, Folder[]][] {
+  const m = new Map<string, Folder[]>();
+  for (const f of list) m.set(f.by, [...(m.get(f.by) ?? []), f]);
+  return [...m.entries()];
+}
+
 type Props = { folders: Folder[]; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean; noticeFolder?: string; notice?: string };
 
 /** الفولدرات مرتبة: شهر ← يوم ← فولدرات اليوم (بتاريخ النشر). أحدث شهر ويوم مفتوحين */
@@ -42,8 +49,17 @@ export default function FolderTree({ folders, noticeFolder, notice, ...card }: P
                   <summary className="cursor-pointer select-none px-3 py-1.5 text-sm font-bold">
                     📅 {dayLabel(d)} <span className="font-normal text-gray-500">· {list.length} فولدر · {prods(list)} منتج</span>
                   </summary>
-                  <div className="grid gap-2 p-2 md:grid-cols-2 xl:grid-cols-3">
-                    {list.map((f) => <FolderCard key={f.id} f={f} notice={noticeFolder === f.id ? notice : undefined} {...card} />)}
+                  <div className="space-y-2 p-2">
+                    {byAdmin(list).map(([admin, items]) => (
+                      <section key={admin}>
+                        <h4 className="mb-1 flex items-center gap-1 text-xs font-bold text-brand-800">
+                          👤 {admin} <span className="font-normal text-gray-500">· {items.length} فولدر · {prods(items)} منتج</span>
+                        </h4>
+                        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                          {items.map((f) => <FolderCard key={f.id} f={f} notice={noticeFolder === f.id ? notice : undefined} {...card} />)}
+                        </div>
+                      </section>
+                    ))}
                   </div>
                 </details>
               ))}

@@ -24,8 +24,13 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
             {f.count} منتج · {f.source === 'bot' ? 'من بوت تليجرام' : 'ملف مرفوع'}
           </p>
           <p className="text-xs text-gray-600">
-            🕒 {new Date(f.created_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })} · 👤 {f.by}
+            🕒 رُفع: {new Date(f.created_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })} · 👤 {f.by}
           </p>
+          {f.is_public && (
+            <p className="text-xs font-bold text-green-700">
+              ✅ نُشر: {new Date(f.published_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' })}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-1">
           {!f.is_public && canPublish && <form action={publishFile}>{hidden}<button className="rounded border border-green-500 bg-green-50 px-2 py-1 text-xs font-bold text-green-800">للعلن</button></form>}

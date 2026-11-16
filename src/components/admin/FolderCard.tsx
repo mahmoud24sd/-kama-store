@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import CategoryPicker from '@/components/admin/CategoryPicker';
 import { bulkEditFile, draftFile, publishFile, saveFileMarkup, trashFile } from '@/app/actions/productFiles';
 import type { Folder } from '@/lib/folders';
 import { formatPrice } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
-type Cat = { id: string; name: string };
+type Cat = { id: string; name: string; parent_id?: string | null };
 
 /** ملف = فولدر: عنوان (اسم، عدد، وقت الرفع، مين رفع)، أزرار، منتجاته جواه، وتعديل جماعي للقسم والسعر وغيره */
 export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraft, canTrash, notice, expanded }: { f: Folder; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean; notice?: string; expanded?: boolean }) {
@@ -69,11 +70,7 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
             <div className="grid gap-2 sm:grid-cols-3">
               <div>
                 <label className={ui.label}>القسم</label>
-                <select name="category_id" defaultValue="" className={ui.input}>
-                  <option value="">— من غير تغيير —</option>
-                  <option value="__none">بدون قسم</option>
-                  {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <CategoryPicker cats={cats} />
               </div>
               <div><label className={ui.label}>العلامة التجارية</label><input name="brand" className={ui.input} /></div>
               <div><label className={ui.label}>اسم المحل</label><input name="shop_name" className={ui.input} /></div>

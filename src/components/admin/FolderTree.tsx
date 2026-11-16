@@ -1,7 +1,7 @@
 import FolderCard from '@/components/admin/FolderCard';
 import type { Folder } from '@/lib/folders';
 
-type Cat = { id: string; name: string };
+type Cat = { id: string; name: string; parent_id?: string | null };
 const TZ = 'Africa/Cairo';
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ }); // yyyy-mm-dd
 const monthLabel = (key: string) => new Date(`${key}-15T12:00:00Z`).toLocaleDateString('ar-EG', { month: 'long', year: 'numeric', timeZone: 'UTC' });

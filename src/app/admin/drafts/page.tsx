@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { bulkEditDrafts, bulkPublish, bulkTrash } from '@/app/actions/productFiles';
 import { getAllCategories } from '@/lib/queries';
 import Pagination, { pageNum } from '@/components/admin/Pagination';
+import CategoryPicker from '@/components/admin/CategoryPicker';
 import FolderCard from '@/components/admin/FolderCard';
 import { loadFolders } from '@/lib/folders';
 import ProductPick from '@/components/admin/ProductPick';
@@ -48,11 +49,7 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
             <div className="grid gap-2 sm:grid-cols-3">
               <div>
                 <label className={ui.label} htmlFor="be-cat">القسم</label>
-                <select id="be-cat" name="category_id" defaultValue="" className={ui.input}>
-                  <option value="">— من غير تغيير —</option>
-                  <option value="__none">بدون قسم</option>
-                  {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <CategoryPicker cats={cats} />
               </div>
               <div><label className={ui.label} htmlFor="be-brand">العلامة التجارية</label><input id="be-brand" name="brand" className={ui.input} /></div>
               <div><label className={ui.label} htmlFor="be-shop">اسم المحل</label><input id="be-shop" name="shop_name" className={ui.input} /></div>

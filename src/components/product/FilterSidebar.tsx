@@ -33,7 +33,7 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
               <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
                 <input type="radio" name="category" value={c.slug} defaultChecked={current.category === c.slug} /> {c.name}
               </label>
-              {children.length > 0 && (
+              {children.length > 0 && (current.category === c.slug || children.some((k) => k.slug === current.category)) && (
                 <ul className="mr-5 space-y-0.5 border-r border-gray-200 pr-2">
                   {children.map((k) => (
                     <li key={k.id}>

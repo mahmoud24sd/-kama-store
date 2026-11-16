@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SlidersHorizontal } from 'lucide-react';
+import AutoSubmitForm from '@/components/product/AutoSubmitForm';
 import { categoryTree } from '@/lib/categoryTree';
 import type { Category } from '@/lib/types';
 import { ui } from '@/lib/ui';
@@ -15,7 +16,7 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
   const tree = categoryTree(categories);
 
   const body = (
-    <form action="/products" method="get" className="space-y-4 text-sm">
+    <AutoSubmitForm className="space-y-4 text-sm">
       {current.q && <input type="hidden" name="q" value={current.q} />}
       {current.sort && <input type="hidden" name="sort" value={current.sort} />}
 
@@ -91,10 +92,10 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
       </label>
 
       <div className="flex gap-2">
-        <button type="submit" className={`${ui.btnDark} flex-1`}>تطبيق</button>
-        <Link href="/products" className={ui.btnOutline}>مسح</Link>
+        <noscript><button type="submit" className={`${ui.btnDark} flex-1`}>تطبيق</button></noscript>
+        <Link href="/products" className={`${ui.btnOutline} flex-1 text-center`}>مسح الفلاتر</Link>
       </div>
-    </form>
+    </AutoSubmitForm>
   );
 
   return (

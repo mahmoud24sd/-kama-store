@@ -19,27 +19,36 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
   const pubAt = new Map<string, string>();
   const pubBy = new Map<string, string>();
   if (files.length) {
-    const { data } = await supabase
-      .from('products')
-      .select('id,name,price,is_active,file_id,brand,shop_name,published_at,published_by,categories(name),product_images(url,sort_order)')
-      .in('file_id', files.map((f) => f.id))
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true })
-      .limit(5000);
-    for (const p of data ?? []) {
+    // Supabase يرجّع 1000 صف بس في الطلب الواحد: نقرأ الخفيف صفحات، وبعدين تفاصيل أول perFolder منتج لكل فولدر
+    const fileIds = files.map((f) => f.id);
+    const light: { id: string; file_id: string; published_at: string | null; published_by: string | null }[] = [];
+    for (let from = 0; from < 40000; from += 1000) {
+      const { data } = await supabase.from('products').select('id,file_id,published_at,published_by').in('file_id', fileIds).is('deleted_at', null).order('created_at', { ascending: true }).order('id', { ascending: true }).range(from, from + 999);
+      light.push(...((data ?? []) as typeof light));
+      if (!data || data.length < 1000) break;
+    }
+    const picked = new Map<string, number>();
+    const pickIds: string[] = [];
+    for (const p of light) {
+      counts.set(p.file_id, (counts.get(p.file_id) ?? 0) + 1);
+      if (p.published_at && p.published_at > (pubAt.get(p.file_id) ?? '')) {
+        pubAt.set(p.file_id, p.published_at);
+        if (p.published_by) pubBy.set(p.file_id, p.published_by);
+      }
+      const n = picked.get(p.file_id) ?? 0;
+      if (n < perFolder) { picked.set(p.file_id, n + 1); pickIds.push(p.id); }
+    }
+    const chunks: string[][] = [];
+    for (let i = 0; i < pickIds.length; i += 100) chunks.push(pickIds.slice(i, i + 100));
+    const details = await Promise.all(chunks.map((ids) => supabase.from('products').select('id,name,price,is_active,file_id,brand,shop_name,categories(name),product_images(url,sort_order)').in('id', ids)));
+    const order = new Map(pickIds.map((id, i) => [id, i]));
+    const rows = details.flatMap((r) => r.data ?? []).sort((x, y) => (order.get(x.id as string) ?? 0) - (order.get(y.id as string) ?? 0));
+    for (const p of rows) {
       const fid = p.file_id as string;
-      counts.set(fid, (counts.get(fid) ?? 0) + 1);
-      const pa = p.published_at as string | null;
-      if (pa && pa > (pubAt.get(fid) ?? '')) {
-        pubAt.set(fid, pa);
-        if (p.published_by) pubBy.set(fid, p.published_by as string);
-      }
       const list = byFile.get(fid) ?? [];
-      if (list.length < perFolder) {
-        const imgs = [...((p.product_images as { url: string; sort_order: number }[]) ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-        list.push({ id: p.id as string, name: p.name as string, price: Number(p.price), is_active: Boolean(p.is_active), img: imgs[0]?.url, category: (p.categories as unknown as { name: string } | null)?.name, brand: (p.brand as string | null) ?? undefined, shop: (p.shop_name as string | null) ?? undefined });
-        byFile.set(fid, list);
-      }
+      const imgs = [...((p.product_images as { url: string; sort_order: number }[]) ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+      list.push({ id: p.id as string, name: p.name as string, price: Number(p.price), is_active: Boolean(p.is_active), img: imgs[0]?.url, category: (p.categories as unknown as { name: string } | null)?.name, brand: (p.brand as string | null) ?? undefined, shop: (p.shop_name as string | null) ?? undefined });
+      byFile.set(fid, list);
     }
   }
 

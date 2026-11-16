@@ -58,7 +58,7 @@ export default function FolderTree({ folders, noticeFolder, notice, uploaded = f
                           👤 {admin} <span className="font-normal text-gray-500">· {uploaded ? 'رفع' : 'نشر'} {items.length} فولدر · {prods(items)} منتج</span>
                         </summary>
                         <div className="grid gap-2 p-2 md:grid-cols-2 xl:grid-cols-3">
-                          {items.map((f) => <FolderCard key={f.id} f={f} notice={noticeFolder === f.id ? notice : undefined} {...card} />)}
+                          {items.map((f) => <FolderCard key={f.id} f={f} notice={noticeFolder === f.id ? notice : undefined} expanded={noticeFolder === f.id} {...card} />)}
                         </div>
                       </details>
                     ))}

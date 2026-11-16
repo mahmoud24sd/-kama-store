@@ -30,7 +30,7 @@ export default async function PublishedPage({ searchParams }: { searchParams: Pr
       {folders.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-bold">📁 فولدرات ({folders.length})</h2>
-          <FolderTree folders={folders} back="/admin/published" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canDraft} canTrash={canTrash} noticeFolder={sp.folder} notice={sp.msg} />
+          <FolderTree canMerge={hasPermission(profile, 'merge_files')} folders={folders} back="/admin/published" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canDraft} canTrash={canTrash} noticeFolder={sp.folder} notice={sp.msg} />
         </section>
       )}
       <h2 className="font-bold">المنتجات ({total})</h2>

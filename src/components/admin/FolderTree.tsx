@@ -1,4 +1,5 @@
 import FolderCard from '@/components/admin/FolderCard';
+import MergeZone from '@/components/admin/MergeZone';
 import type { Folder } from '@/lib/folders';
 
 type Cat = { id: string; name: string; parent_id?: string | null };
@@ -17,10 +18,10 @@ function byAdmin(list: Folder[], uploaded: boolean): [string, Folder[]][] {
   return [...m.entries()];
 }
 
-type Props = { folders: Folder[]; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean; noticeFolder?: string; notice?: string; uploaded?: boolean };
+type Props = { folders: Folder[]; back: string; cats: Cat[]; canEdit: boolean; canPublish: boolean; canDraft: boolean; canTrash: boolean; noticeFolder?: string; notice?: string; uploaded?: boolean; canMerge?: boolean };
 
 /** الفولدرات مرتبة: شهر ← يوم ← فولدرات اليوم (بتاريخ النشر). أحدث شهر ويوم مفتوحين */
-export default function FolderTree({ folders, noticeFolder, notice, uploaded = false, ...card }: Props) {
+export default function FolderTree({ folders, noticeFolder, notice, uploaded = false, canMerge = false, ...card }: Props) {
   const when = (f: Folder) => (uploaded ? f.created_at : f.published_at);
   const sorted = [...folders].sort((a, b) => (when(a) < when(b) ? 1 : -1));
   const months = new Map<string, Map<string, Folder[]>>();
@@ -58,7 +59,10 @@ export default function FolderTree({ folders, noticeFolder, notice, uploaded = f
                           👤 {admin} <span className="font-normal text-gray-500">· {uploaded ? 'رفع' : 'نشر'} {items.length} فولدر · {prods(items)} منتج</span>
                         </summary>
                         <div className="grid gap-2 p-2 md:grid-cols-2 xl:grid-cols-3">
-                          {items.map((f) => <FolderCard key={f.id} f={f} notice={noticeFolder === f.id ? notice : undefined} expanded={noticeFolder === f.id} {...card} />)}
+                          {items.map((f) => {
+                            const cardEl = <FolderCard f={f} notice={noticeFolder === f.id ? notice : undefined} expanded={noticeFolder === f.id} {...card} />;
+                            return canMerge ? <MergeZone key={f.id} id={f.id} name={f.name}>{cardEl}</MergeZone> : <div key={f.id}>{cardEl}</div>;
+                          })}
                         </div>
                       </details>
                     ))}

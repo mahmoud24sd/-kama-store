@@ -71,7 +71,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
         <section className="space-y-2">
           <h2 className="font-extrabold">📁 الفولدرات المنشورة ({folders.length}) — مرتبة بالشهر واليوم</h2>
           <p className="text-xs text-gray-600">افتح الفولدر تشوف المنتجات، وعدّل القسم والعلامة والمحل والسعر لكلها مرة واحدة.</p>
-          <FolderTree folders={folders} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} noticeFolder={sp.folder} notice={sp.msg} />
+          <FolderTree canMerge={hasPermission(profile, 'merge_files')} folders={folders} back="/admin/products" cats={cats} canEdit={canEdit} canPublish={false} canDraft={canProducts || canBot} canTrash={canProducts} noticeFolder={sp.folder} notice={sp.msg} />
         </section>
       )}
       {folders.length > 0 && <h2 className="font-extrabold">منتجات برّه الفولدرات ({looseTotal})</h2>}

@@ -24,7 +24,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
       {folders.length === 0 ? (
         <p className="py-8 text-center text-gray-500">مفيش ملفات من البوت لسه.</p>
       ) : (
-        <FolderTree uploaded folders={folders} back="/admin/files" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft canTrash={canTrash} noticeFolder={sp.folder} notice={sp.msg} />
+        <FolderTree canMerge={hasPermission(profile, 'merge_files')} uploaded folders={folders} back="/admin/files" cats={cats} canEdit={canEdit} canPublish={canPublish} canDraft canTrash={canTrash} noticeFolder={sp.folder} notice={sp.msg} />
       )}
     </div>
   );

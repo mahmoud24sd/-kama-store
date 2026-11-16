@@ -218,3 +218,21 @@ export async function emptyTrash() {
   await supabase.from('product_files').delete().not('deleted_at', 'is', null);
   return back('/admin/trash', 'المهملات اتفضّت');
 }
+
+
+/** دمج فولدر جوه فولدر تاني (سحب وإفلات): منتجات الأول تنتقل للتاني والفولدر الفاضي يتمسح */
+export async function mergeFiles(sourceId: string, targetId: string): Promise<{ ok: boolean; msg: string }> {
+  const { supabase } = await ctx(['merge_files']);
+  const ids = z.object({ s: z.string().uuid(), t: z.string().uuid() }).safeParse({ s: sourceId, t: targetId });
+  if (!ids.success || ids.data.s === ids.data.t) return { ok: false, msg: 'اختار فولدر تاني تنقل ليه' };
+  const { data: rows } = await supabase.from('product_files').select('id,name,is_public').in('id', [ids.data.s, ids.data.t]).is('deleted_at', null);
+  const src = rows?.find((r) => r.id === ids.data.s);
+  const dst = rows?.find((r) => r.id === ids.data.t);
+  if (!src || !dst) return { ok: false, msg: 'الفولدر مش موجود (يمكن اتحذف). حدّث الصفحة' };
+  if (Boolean(src.is_public) !== Boolean(dst.is_public)) return { ok: false, msg: 'الفولدرين لازم يكونوا في نفس الحالة: مسودة مع مسودة، أو منشور مع منشور' };
+  const { error } = await supabase.from('products').update({ file_id: dst.id }).eq('file_id', src.id);
+  if (error) return { ok: false, msg: 'تعذّر نقل المنتجات. جرّب تاني' };
+  await supabase.from('product_files').delete().eq('id', src.id);
+  revalidatePath('/', 'layout');
+  return { ok: true, msg: `اتنقلت منتجات «${src.name}» جوه «${dst.name}»` };
+}

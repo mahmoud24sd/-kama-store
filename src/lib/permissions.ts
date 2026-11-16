@@ -31,6 +31,7 @@ export const PERMISSIONS = [
   { key: 'trash', label: 'صفحة المهملات (الحذف)' },
   { key: 'trash_purge', label: 'الحذف النهائي من الموقع' },
   { key: 'bot_publish', label: 'نشر المنتجات من بوت تليجرام' },
+  { key: 'merge_files', label: 'نقل الفولدرات ودمجها (سحب وإفلات)' },
   { key: 'screenshots', label: 'الاسكرينات (صور إثبات الدفع)' },
 ] as const;
 

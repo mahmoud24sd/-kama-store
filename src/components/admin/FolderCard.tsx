@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ExpandBox from '@/components/admin/ExpandBox';
 import CategoryPicker from '@/components/admin/CategoryPicker';
 import { bulkEditFile, draftFile, publishFile, saveFileMarkup, trashFile } from '@/app/actions/productFiles';
 import type { Folder } from '@/lib/folders';
@@ -48,14 +49,14 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
 
       <details open={Boolean(notice) || Boolean(expanded)} className="rounded-lg border border-gray-200">
         <summary className="cursor-pointer px-2 py-1 text-xs font-bold">📂 فتح الفولدر ({f.count} منتج)</summary>
-        <div className="grid max-h-72 grid-cols-3 gap-1.5 overflow-y-auto p-1.5 sm:grid-cols-4 lg:grid-cols-5">
+        <ExpandBox title={f.name}>
           {f.products.map((p) => (
             <div key={p.id} className="rounded-lg border border-gray-100 p-1 text-[11px]">
               {p.img ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.img} alt="" loading="lazy" className="h-14 w-full rounded object-cover" /> : <div className="flex h-14 items-center justify-center rounded bg-gray-50 text-red-600">بدون صورة</div>}
               <p className="mt-1 line-clamp-2 font-semibold">{p.name}</p>
               <p className="text-gray-600">{formatPrice(p.price)}</p>
               <p className="text-[11px] text-gray-500">{[p.category ? `🏷 ${p.category}` : '🏷 بدون قسم', p.brand, p.shop ? `🏬 ${p.shop}` : ''].filter(Boolean).join(' · ')}</p>
-            </div>
+            </ExpandBox>
           ))}
         </div>
         {f.count > f.products.length && <p className="px-3 pb-2 text-xs text-gray-500">معروض {f.products.length} من {f.count}. <Link href={`/admin/products/files/${f.id}`} className="text-brand-600 underline">افتح الملف كله</Link></p>}

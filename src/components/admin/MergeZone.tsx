@@ -41,9 +41,9 @@ export default function MergeZone({ id, name, children }: { id: string; name: st
           e.dataTransfer.effectAllowed = 'move';
           if (ref.current) e.dataTransfer.setDragImage(ref.current, 20, 20);
         }}
-        className="mb-1 flex cursor-grab items-center gap-1 rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-600 active:cursor-grabbing"
+        className="mb-1 flex h-7 w-7 cursor-grab items-center justify-center rounded-lg bg-gray-100 text-base font-bold text-gray-600 hover:bg-gray-200 active:cursor-grabbing"
       >
-        ✥ اسحبني وحطني جوه فولدر
+        ✥
       </div>
       {msg && <p className="mb-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">{msg}</p>}
       {children}

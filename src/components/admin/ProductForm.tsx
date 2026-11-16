@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { saveProduct } from '@/app/actions/admin';
+import { categoryOptions } from '@/lib/categoryTree';
 import type { Category, Product, ProductPrivate } from '@/lib/types';
 import { sortedImages , safeImageUrl } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -42,7 +43,7 @@ export default function ProductForm({ product, categories, privateInfo }: { prod
           <label className={ui.label} htmlFor="category_id">القسم</label>
           <select id="category_id" name="category_id" defaultValue={product?.category_id ?? ''} className={ui.input}>
             <option value="">— بدون قسم —</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {categoryOptions(categories).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </div>
         <div>

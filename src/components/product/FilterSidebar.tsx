@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SlidersHorizontal } from 'lucide-react';
+import { categoryTree } from '@/lib/categoryTree';
 import type { Category } from '@/lib/types';
 import { ui } from '@/lib/ui';
 
@@ -11,7 +12,7 @@ type Props = {
 
 /** نموذج GET عادي: يعمل بدون JavaScript، وفي الموبايل يُفتح داخل <details> */
 export default function FilterSidebar({ categories, brands, current }: Props) {
-  const topLevel = categories.filter((c) => !c.parent_id);
+  const tree = categoryTree(categories);
 
   const body = (
     <form action="/products" method="get" className="space-y-4 text-sm">
@@ -26,11 +27,22 @@ export default function FilterSidebar({ categories, brands, current }: Props) {
               <input type="radio" name="category" value="" defaultChecked={!current.category} /> الكل
             </label>
           </li>
-          {topLevel.map((c) => (
+          {tree.map(({ c, children }) => (
             <li key={c.id}>
               <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
                 <input type="radio" name="category" value={c.slug} defaultChecked={current.category === c.slug} /> {c.name}
               </label>
+              {children.length > 0 && (
+                <ul className="mr-5 space-y-0.5 border-r border-gray-200 pr-2">
+                  {children.map((k) => (
+                    <li key={k.id}>
+                      <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-0.5 text-[13px] transition-colors hover:bg-gray-50 has-[:checked]:bg-brand-100 has-[:checked]:font-bold has-[:checked]:text-brand-800 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
+                        <input type="radio" name="category" value={k.slug} defaultChecked={current.category === k.slug} /> {k.name}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

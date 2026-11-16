@@ -219,9 +219,15 @@ export async function saveCategory(formData: FormData) {
   if (!parsed.success) fail('/admin/categories', parsed.error.issues[0].message);
   const d = parsed.data!;
 
+  let parentSlug = '';
+  if (d.parent_id && d.parent_id !== d.id && !d.slug) {
+    const { data: par } = await supabase.from('categories').select('slug').eq('id', d.parent_id).maybeSingle();
+    parentSlug = (par?.slug as string | undefined) ?? '';
+  }
+  const autoSlug = slugify(d.name) || `c-${Date.now().toString(36)}`;
   const row = {
     name: d.name,
-    slug: d.slug ? slugify(d.slug) : slugify(d.name) || `c-${Date.now().toString(36)}`,
+    slug: d.slug ? slugify(d.slug) : parentSlug ? `${parentSlug}-${autoSlug}` : autoSlug,
     sort_order: d.sort_order,
     parent_id: d.parent_id && d.parent_id !== d.id ? d.parent_id : null,
     admin_only: formData.get('admin_only') === 'on',

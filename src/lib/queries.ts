@@ -22,7 +22,9 @@ const fetchCategories = unstable_cache(
 
 /** أقسام الموقع للزوار: بدون الأقسام المخفية («أنا فقط») */
 export async function getCategories(): Promise<Category[]> {
-  return (await fetchCategories()).filter((c) => !c.admin_only);
+  const all = await fetchCategories();
+  const hidden = new Set(all.filter((c) => c.admin_only).map((c) => c.id));
+  return all.filter((c) => !c.admin_only && !(c.parent_id && hidden.has(c.parent_id)));
 }
 
 /** كل الأقسام بما فيها المخفية — للوحة الأدمن فقط */

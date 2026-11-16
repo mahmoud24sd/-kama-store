@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { saveSellerProduct } from '@/app/actions/sell';
+import { categoryOptions } from '@/lib/categoryTree';
 import type { Category, Product } from '@/lib/types';
 import { sortedImages , safeImageUrl } from '@/lib/utils';
 import { ui } from '@/lib/ui';
@@ -23,7 +24,7 @@ export default function SellerProductForm({ product, categories, fee }: { produc
           <label className={ui.label} htmlFor="category_id">القسم</label>
           <select id="category_id" name="category_id" defaultValue={product?.category_id ?? ''} className={ui.input}>
             <option value="">— بدون قسم —</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {categoryOptions(categories).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </div>
         <div>

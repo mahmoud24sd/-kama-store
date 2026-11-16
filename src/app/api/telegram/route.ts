@@ -387,7 +387,7 @@ async function uploadToSite(db: Db, chat: number, by: number, all: boolean) {
       saved += live.length;
       await db.from('telegram_items').update({ exported_at: now }).in('id', part.map((x) => x.id as string));
     }
-    await keyboard(chat, `✅ اترفع للموقع (مسودة): «${label}»\n${saved} منتج · زيادة ${st.fixed} جنيه${dups ? `\n${dups} منتج متكرر ما اترفعش (راح المهملات)` : ''}\nافتحه من: ${getSiteUrl()}/admin/files`, [[{ text: 'نشر للعلن ✅', data: `pub:${file.id}` }]]);
+    await keyboard(chat, `✅ اترفع للموقع (مسودة): «${label}»\n${saved} منتج · زيادة ${st.fixed} جنيه${dups ? `\n${dups} منتج متكرر ما اترفعش (راح المهملات)` : ''}\nافتحه من: ${getSiteUrl()}/admin/files?folder=${file.id}`, [[{ text: 'نشر للعلن ✅', data: `pub:${file.id}` }]]);
   }
 }
 

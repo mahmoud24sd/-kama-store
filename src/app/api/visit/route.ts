@@ -12,6 +12,8 @@ export async function POST(request: Request) {
     if (seen) return res;
     const supabase = await createClient();
     await supabase.rpc('track_visit');
+    // الدولة من هيدر Vercel المجاني (من غير أي خدمة خارجية). فشلها مايأثرش على العدّ
+    await supabase.rpc('track_visit_country', { c: request.headers.get('x-vercel-ip-country') ?? '' }).then(() => null, () => null);
     res.cookies.set('kv', '1', { maxAge: 30 * 60, path: '/', sameSite: 'lax', httpOnly: true });
     return res;
   } catch {

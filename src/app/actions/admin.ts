@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { assertAdmin, assertPermission } from '@/lib/auth';
 import { removeImages, uploadImage } from '@/lib/imageStore';
+import { defaultSubs } from '@/lib/defaultSubs';
 import { enqueueSocial } from '@/lib/social';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 import { slugify, toNumber } from '@/lib/utils';
@@ -232,13 +233,39 @@ export async function saveCategory(formData: FormData) {
     parent_id: d.parent_id && d.parent_id !== d.id ? d.parent_id : null,
     admin_only: formData.get('admin_only') === 'on',
   };
-  const { error } = d.id
-    ? await supabase.from('categories').update(row).eq('id', d.id)
-    : await supabase.from('categories').insert(row);
+  const { data: saved, error } = d.id
+    ? await supabase.from('categories').update(row).eq('id', d.id).select('id').maybeSingle()
+    : await supabase.from('categories').insert(row).select('id').single();
   if (error) fail('/admin/categories', error.code === '23505' ? 'الرابط المختصر مستخدم لقسم آخر' : 'تعذر حفظ القسم');
+  // قسم رئيسي جديد: نعمل له أقسامه الفرعية تلقائيًا (رجالي/حريمي/أطفالي… حسب نوعه)
+  if (!d.id && !row.parent_id && saved?.id) await addSubcategories(supabase, { id: saved.id as string, name: row.name, slug: row.slug, admin_only: row.admin_only });
 
   revalidatePath('/', 'layout');
   redirect('/admin/categories');
+}
+
+type SubParent = { id: string; name: string; slug: string; admin_only?: boolean };
+
+/** يضيف الأقسام الفرعية الناقصة لقسم رئيسي (بدون تكرار)، وترث خانة «أنا فقط» من القسم الأب */
+async function addSubcategories(supabase: Awaited<ReturnType<typeof assertPermission>>['supabase'], parent: SubParent): Promise<number> {
+  const { data: existing } = await supabase.from('categories').select('name,slug').eq('parent_id', parent.id);
+  const have = new Set((existing ?? []).map((c) => String(c.name).trim()));
+  const names = defaultSubs(parent.name).filter((n) => !have.has(n));
+  if (!names.length) return 0;
+  const rows = names.map((name, i) => ({ name, slug: `${parent.slug}-${slugify(name) || i}`, sort_order: i + 1, parent_id: parent.id }));
+  let { error } = await supabase.from('categories').insert(rows.map((r) => ({ ...r, admin_only: Boolean(parent.admin_only) })));
+  if (error) ({ error } = await supabase.from('categories').insert(rows)); // قبل تشغيل ملف 027
+  return error ? 0 : rows.length;
+}
+
+/** زر: يعمل الأقسام الفرعية لكل قسم رئيسي (حتى المخفية) من غير ما تختار */
+export async function autoSubcategories() {
+  const { supabase } = await assertPermission('categories');
+  const { data } = await supabase.from('categories').select('*').is('parent_id', null);
+  let n = 0;
+  for (const c of data ?? []) n += await addSubcategories(supabase, c as SubParent);
+  revalidatePath('/', 'layout');
+  redirect(`/admin/categories?ok=${encodeURIComponent(n ? `اتضاف ${n} قسم فرعي` : 'كل الأقسام الفرعية موجودة بالفعل')}`);
 }
 
 export async function deleteCategory(formData: FormData) {

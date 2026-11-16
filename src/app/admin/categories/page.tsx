@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { deleteCategory, saveCategory } from '@/app/actions/admin';
+import { autoSubcategories, deleteCategory, saveCategory } from '@/app/actions/admin';
 import { getAllCategories } from '@/lib/queries';
 import { requirePermission } from '@/lib/auth';
 import { categoryTree } from '@/lib/categoryTree';
@@ -32,7 +32,7 @@ function Row({ c, categories, sub }: { c: Category; categories: Category[]; sub?
 
 export const metadata: Metadata = { title: 'الأقسام' };
 
-export default async function AdminCategories({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function AdminCategories({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
   await requirePermission('categories');
   const [categories, sp] = await Promise.all([getAllCategories(), searchParams]);
 
@@ -40,6 +40,11 @@ export default async function AdminCategories({ searchParams }: { searchParams: 
     <div className="space-y-6">
       <h1 className="text-xl font-extrabold">الأقسام</h1>
       {sp.error && <p className={ui.alertError}>{sp.error}</p>}
+      {sp.ok && <p className={ui.alertOk}>{sp.ok}</p>}
+      <form action={autoSubcategories} className="rounded-xl border border-brand-200 bg-brand-50 p-3">
+        <p className="mb-2 text-sm text-gray-700">يعمل لكل قسم رئيسي أقسامه الفرعية تلقائيًا (مثلًا الأزياء: رجالي، حريمي، أطفالي…) حتى الأقسام اللي «أنا فقط»، ومن غير تكرار. أي قسم رئيسي جديد بتضيفه بيتعمل له كده لوحده.</p>
+        <button className={ui.btnPrimary}>➕ اعمل الأقسام الفرعية لكل الأقسام</button>
+      </form>
 
       <section className="rounded-xl border border-gray-200 p-4">
         <h2 className="mb-3 font-bold">قسم جديد</h2>

@@ -224,6 +224,7 @@ export async function saveCategory(formData: FormData) {
     slug: d.slug ? slugify(d.slug) : slugify(d.name) || `c-${Date.now().toString(36)}`,
     sort_order: d.sort_order,
     parent_id: d.parent_id && d.parent_id !== d.id ? d.parent_id : null,
+    admin_only: formData.get('admin_only') === 'on',
   };
   const { error } = d.id
     ? await supabase.from('categories').update(row).eq('id', d.id)

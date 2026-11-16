@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { deleteCategory, saveCategory } from '@/app/actions/admin';
-import { getCategories } from '@/lib/queries';
+import { getAllCategories } from '@/lib/queries';
 import { requirePermission } from '@/lib/auth';
 import { ui } from '@/lib/ui';
 
@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'الأقسام' };
 
 export default async function AdminCategories({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await requirePermission('categories');
-  const [categories, sp] = await Promise.all([getCategories(), searchParams]);
+  const [categories, sp] = await Promise.all([getAllCategories(), searchParams]);
 
   return (
     <div className="space-y-6">
@@ -43,7 +43,11 @@ export default async function AdminCategories({ searchParams }: { searchParams: 
                 {categories.filter((p) => !p.parent_id && p.id !== c.id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input name="sort_order" type="number" min={0} defaultValue={c.sort_order} className={ui.input} aria-label="الترتيب" />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex cursor-pointer items-center gap-1 text-sm font-medium">
+                  <input type="checkbox" name="admin_only" defaultChecked={Boolean(c.admin_only)} className="h-4 w-4" />
+                  أنا فقط
+                </label>
                 <button className={ui.btnDark}>حفظ</button>
                 <button formAction={deleteCategory} className={ui.btnDanger}>حذف</button>
               </div>
@@ -51,7 +55,7 @@ export default async function AdminCategories({ searchParams }: { searchParams: 
           </li>
         ))}
       </ul>
-      <p className="text-xs text-gray-500">حذف القسم لا يحذف منتجاته؛ تصبح بدون قسم.</p>
+      <p className="text-xs text-gray-500">حذف القسم لا يحذف منتجاته؛ تصبح بدون قسم. علامة «أنا فقط» + حفظ = القسم يختفي من الموقع للزوار ويفضل ظاهر هنا لك.</p>
     </div>
   );
 }

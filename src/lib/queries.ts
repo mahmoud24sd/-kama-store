@@ -20,7 +20,13 @@ const fetchCategories = unstable_cache(
   { revalidate: 60 },
 );
 
+/** أقسام الموقع للزوار: بدون الأقسام المخفية («أنا فقط») */
 export async function getCategories(): Promise<Category[]> {
+  return (await fetchCategories()).filter((c) => !c.admin_only);
+}
+
+/** كل الأقسام بما فيها المخفية — للوحة الأدمن فقط */
+export async function getAllCategories(): Promise<Category[]> {
   return fetchCategories();
 }
 

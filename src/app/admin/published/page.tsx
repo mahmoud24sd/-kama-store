@@ -3,7 +3,7 @@ import { bulkDraft, bulkTrash } from '@/app/actions/productFiles';
 import Pagination, { pageNum } from '@/components/admin/Pagination';
 import FolderTree from '@/components/admin/FolderTree';
 import { loadFolders } from '@/lib/folders';
-import { getCategories } from '@/lib/queries';
+import { getAllCategories } from '@/lib/queries';
 import ProductPick from '@/components/admin/ProductPick';
 import { requirePermission } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
@@ -17,7 +17,7 @@ export default async function PublishedPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const { rows, total, missing, fileNames } = await loadList(supabase, true, pageNum(sp.pp));
   const { folders } = await loadFolders(supabase, 'public', 1, 300, 12);
-  const cats = await getCategories();
+  const cats = await getAllCategories();
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
   const canDraft = (['products', 'bot_publish', 'drafts'] as const).some((k) => hasPermission(profile, k));
   const canTrash = (['products', 'published'] as const).some((k) => hasPermission(profile, k));

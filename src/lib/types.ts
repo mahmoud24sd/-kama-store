@@ -6,6 +6,7 @@ export type Category = {
   slug: string;
   parent_id: string | null;
   sort_order: number;
+  admin_only?: boolean;
 };
 
 export type ProductImage = { id: string; url: string; sort_order: number };

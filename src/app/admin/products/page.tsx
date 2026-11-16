@@ -6,7 +6,7 @@ import FolderTree from '@/components/admin/FolderTree';
 import Pagination, { pageNum } from '@/components/admin/Pagination';
 import SelectAll from '@/components/admin/SelectAll';
 import { loadFolders } from '@/lib/folders';
-import { getCategories } from '@/lib/queries';
+import { getAllCategories } from '@/lib/queries';
 import { hasPermission } from '@/lib/permissions';
 import { requireAdmin } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -48,7 +48,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   const folderData = term ? { folders: [], total: 0 } : await loadFolders(supabase, 'public', 1, 300, 12);
   const folders = folderData.folders;
   const looseTotal = res.count ?? products.length;
-  const cats = folders.length > 0 ? await getCategories() : [];
+  const cats = folders.length > 0 ? await getAllCategories() : [];
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
 
   const { data: pubs } = await supabase.from('profiles').select('id,full_name,email').in('id', [...new Set(products.map((p) => (p as unknown as { published_by?: string }).published_by).filter(Boolean) as string[])].slice(0, 200));

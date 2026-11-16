@@ -3,7 +3,7 @@ import FolderTree from '@/components/admin/FolderTree';
 import { requirePermission } from '@/lib/auth';
 import { loadFolders } from '@/lib/folders';
 import { hasPermission } from '@/lib/permissions';
-import { getCategories } from '@/lib/queries';
+import { getAllCategories } from '@/lib/queries';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'الملفات' };
@@ -14,7 +14,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
   const canPublish = (['products', 'bot_publish', 'published'] as const).some((k) => hasPermission(profile, k));
   const canTrash = (['products', 'files'] as const).some((k) => hasPermission(profile, k));
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
-  const [{ folders }, cats] = await Promise.all([loadFolders(supabase, 'bot', 1, 300, 12), getCategories()]);
+  const [{ folders }, cats] = await Promise.all([loadFolders(supabase, 'bot', 1, 300, 12), getAllCategories()]);
 
   return (
     <div className="space-y-3">

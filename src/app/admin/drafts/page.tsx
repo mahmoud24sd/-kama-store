@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { bulkEditDrafts, bulkPublish, bulkTrash } from '@/app/actions/productFiles';
-import { getCategories } from '@/lib/queries';
+import { getAllCategories } from '@/lib/queries';
 import Pagination, { pageNum } from '@/components/admin/Pagination';
 import FolderCard from '@/components/admin/FolderCard';
 import { loadFolders } from '@/lib/folders';
@@ -17,7 +17,7 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const { rows, total, missing, fileNames } = await loadList(supabase, false, pageNum(sp.pp));
   const { folders, total: folderTotal } = await loadFolders(supabase, 'draft', pageNum(sp.fp));
-  const cats = await getCategories();
+  const cats = await getAllCategories();
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
   const canPublish = (['products', 'bot_publish', 'published'] as const).some((k) => hasPermission(profile, k));
   const canTrash = (['products', 'drafts'] as const).some((k) => hasPermission(profile, k));

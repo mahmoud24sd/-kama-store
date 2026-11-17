@@ -13,7 +13,7 @@ export default function ExpandBox({ title, children }: { title: string; children
           {full ? '✕ إغلاق' : '⤢ ملء الشاشة'}
         </button>
       </div>
-      <div className={full ? 'grid flex-1 grid-cols-3 content-start gap-2 overflow-y-auto p-2 sm:grid-cols-5 lg:grid-cols-8' : 'grid min-h-[10rem] h-72 max-h-[90vh] resize-y grid-cols-3 content-start gap-1.5 overflow-y-auto p-1.5 sm:grid-cols-4 lg:grid-cols-5'}>
+      <div className={full ? 'grid flex-1 grid-cols-3 content-start gap-2 overflow-y-auto p-2 sm:grid-cols-5 lg:grid-cols-8' : 'grid min-h-[10rem] h-72 max-h-[90vh] max-w-full resize grid-cols-3 content-start gap-1.5 overflow-auto p-1.5 sm:grid-cols-4 lg:grid-cols-5'}>
         {children}
       </div>
     </div>

@@ -56,9 +56,9 @@ export default function FolderCard({ f, back, cats, canEdit, canPublish, canDraf
               <p className="mt-1 line-clamp-2 font-semibold">{p.name}</p>
               <p className="text-gray-600">{formatPrice(p.price)}</p>
               <p className="text-[11px] text-gray-500">{[p.category ? `🏷 ${p.category}` : '🏷 بدون قسم', p.brand, p.shop ? `🏬 ${p.shop}` : ''].filter(Boolean).join(' · ')}</p>
-            </ExpandBox>
+            </div>
           ))}
-        </div>
+        </ExpandBox>
         {f.count > f.products.length && <p className="px-3 pb-2 text-xs text-gray-500">معروض {f.products.length} من {f.count}. <Link href={`/admin/products/files/${f.id}`} className="text-brand-600 underline">افتح الملف كله</Link></p>}
       </details>
 

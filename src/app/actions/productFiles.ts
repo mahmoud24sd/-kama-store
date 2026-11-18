@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { assertAdmin } from '@/lib/auth';
 import { hasPermission, type Permission } from '@/lib/permissions';
 import { removeImages } from '@/lib/imageStore';
+import { allowedCategoryIds } from '@/lib/publishScope';
 import { enqueueFile, enqueueSocial } from '@/lib/social';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
 
@@ -49,12 +50,19 @@ async function setVisibility(formData: FormData, pub: boolean) {
   const { supabase, profile } = await ctx(pub ? canPublishFile : canFiles);
   const id = fileId(formData);
   if (!id.success) return back(where(formData));
+  const allowed = pub ? await allowedCategoryIds(supabase, profile) : null; // أدمن مقيّد بأقسام معيّنة
+  if (allowed) {
+    const { count } = await supabase.from('products').select('id', { count: 'exact', head: true }).eq('file_id', id.data).is('deleted_at', null).gt('price', 0).in('category_id', allowed);
+    if (!count) return back(where(formData), 'مش مسموحلك تنشر المنتجات دي: المالك حدّدلك أقسام معيّنة تنشر فيها، ومفيش منتج في الفولدر ده من أقسامك. اختار القسم الأول من «تعديل».');
+  }
   await supabase.from('product_files').update({ is_public: pub }).eq('id', id.data);
   await supabase.from('product_files').update({ stage: pub ? 'public' : 'draft' }).eq('id', id.data);
-  { let u = supabase.from('products').update({ is_active: pub }).eq('file_id', id.data).is('deleted_at', null); if (pub) u = u.gt('price', 0); await u; } // منتج بسعر 0 مايظهرش للعملاء
+  { let u = supabase.from('products').update({ is_active: pub }).eq('file_id', id.data).is('deleted_at', null); if (pub) u = u.gt('price', 0); if (allowed) u = u.in('category_id', allowed); await u; } // منتج بسعر 0 مايظهرش للعملاء
   if (pub) {
     const now = new Date().toISOString();
-    await supabase.from('products').update({ published_by: profile.id, published_at: now }).eq('file_id', id.data).is('deleted_at', null);
+    let u = supabase.from('products').update({ published_by: profile.id, published_at: now }).eq('file_id', id.data).is('deleted_at', null);
+    if (allowed) u = u.in('category_id', allowed);
+    await u;
   }
   if (pub && hasServiceRole) await enqueueFile(createAdminClient(), id.data);
   return back(where(formData), pub ? 'الملف ظاهر للعلن دلوقتي' : 'الملف رجع مسودة (مخفي)');
@@ -117,9 +125,16 @@ async function runBulk(formData: FormData, op: string) {
   if (!ids.success || ids.data.length === 0) return back(to, 'حدّد منتج واحد على الأقل');
   const now = new Date().toISOString();
   if (op === 'publish') {
-    await supabase.from('products').update({ is_active: true, published_by: profile.id, published_at: now }).in('id', ids.data).is('deleted_at', null).gt('price', 0);
-    if (hasServiceRole) await enqueueSocial(createAdminClient(), ids.data);
-    return back(to, `${ids.data.length} منتج ظاهر للعلن`);
+    const allowed = await allowedCategoryIds(supabase, profile);
+    let pubIds = ids.data;
+    if (allowed) {
+      const { data: ok } = await supabase.from('products').select('id').in('id', ids.data).in('category_id', allowed);
+      pubIds = (ok ?? []).map((r) => r.id as string);
+      if (pubIds.length === 0) return back(to, 'مش مسموحلك تنشر المنتجات دي: أقسامها مش من الأقسام اللي المالك حدّدها لك');
+    }
+    await supabase.from('products').update({ is_active: true, published_by: profile.id, published_at: now }).in('id', pubIds).is('deleted_at', null).gt('price', 0);
+    if (hasServiceRole) await enqueueSocial(createAdminClient(), pubIds);
+    return back(to, pubIds.length < ids.data.length ? `${pubIds.length} منتج ظاهر للعلن، و${ids.data.length - pubIds.length} اتسابوا لأن أقسامهم مش من أقسامك` : `${ids.data.length} منتج ظاهر للعلن`);
   }
   if (op === 'draft') {
     await supabase.from('products').update({ is_active: false }).in('id', ids.data);

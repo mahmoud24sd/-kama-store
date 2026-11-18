@@ -43,7 +43,7 @@ export async function makeAdminWithPermissions(formData: FormData) {
   if (!target) fail(back, 'المستخدم غير موجود');
   if (target!.role !== 'customer') fail(back, 'هذا الحساب أدمن أو مالك بالفعل');
 
-  const permissions = formData.getAll('permissions').map(String).filter((p) => PERMISSION_KEYS.includes(p));
+  const permissions = formData.getAll('permissions').map(String).filter((p) => PERMISSION_KEYS.includes(p) || /^cat:[0-9a-f-]{36}$/i.test(p));
   const { error } = await supabase.from('profiles').update({ role: 'admin', permissions }).eq('id', id.data!).eq('role', 'customer');
   if (error) fail(back, 'تعذّرت ترقية المستخدم. تأكد من تشغيل ملف supabase/migrations/001 في Supabase');
 
@@ -57,12 +57,12 @@ export async function savePermissions(formData: FormData) {
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) fail('/admin/team', 'بيانات غير صالحة');
 
-  const permissions = formData.getAll('permissions').map(String).filter((p) => PERMISSION_KEYS.includes(p));
+  const permissions = formData.getAll('permissions').map(String).filter((p) => PERMISSION_KEYS.includes(p) || /^cat:[0-9a-f-]{36}$/i.test(p));
   const { error } = await supabase.from('profiles').update({ permissions }).eq('id', id.data!).eq('role', 'admin');
   if (error) fail('/admin/team', 'تعذّر حفظ الصلاحيات');
 
   revalidatePath('/admin/team');
-  redirect('/admin/team?saved=1');
+  redirect(`/admin/team?saved=${id.data}`);
 }
 
 export async function demoteAdmin(formData: FormData) {

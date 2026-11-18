@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { assertAdmin, assertPermission } from '@/lib/auth';
 import { removeImages, uploadImage } from '@/lib/imageStore';
+import { allowedCategoryIds } from '@/lib/publishScope';
 import { defaultSubs } from '@/lib/defaultSubs';
 import { enqueueSocial } from '@/lib/social';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
@@ -95,6 +96,10 @@ export async function saveProduct(formData: FormData) {
   if (id) {
     const { data: cur } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
     existingRow = cur as Record<string, unknown> | null;
+  }
+  if (intent === 'publish') {
+    const allowed = await allowedCategoryIds(supabase, profile);
+    if (allowed && !(d.category_id && allowed.includes(d.category_id))) fail(back, 'مش مسموحلك تنشر في القسم ده: المالك حدّدلك أقسام معيّنة');
   }
   const isActive = intent === 'publish' ? true : intent === 'unpublish' ? false : Boolean(existingRow?.is_active);
 

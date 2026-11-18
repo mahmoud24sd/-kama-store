@@ -24,6 +24,13 @@ export default async function AdminDashboard() {
     supabase.rpc('admin_product_stats'),
   ]);
 
+  const adminIds = [...new Set(((productStats.data as ProductStatsData | null)?.publishers ?? []).map((r) => r.admin_id).filter(Boolean) as string[])];
+  const phones: Record<string, string> = {};
+  if (adminIds.length) {
+    const { data: ps } = await supabase.from('profiles').select('id,phone').in('id', adminIds);
+    for (const u of ps ?? []) if (u.phone) phones[u.id as string] = String(u.phone);
+  }
+
   if (error || !stats) {
     return <p className={ui.alertError}>تعذر تحميل الإحصائيات. تأكد من تشغيل supabase/schema.sql بالكامل.</p>;
   }
@@ -76,7 +83,7 @@ export default async function AdminDashboard() {
         )}
       </section>
 
-      <ProductStats data={(productStats.data as ProductStatsData | null) ?? null} failed={Boolean(productStats.error)} />
+      <ProductStats data={(productStats.data as ProductStatsData | null) ?? null} failed={Boolean(productStats.error)} phones={phones} />
 
       <section>
         <div className="mb-3 flex items-center justify-between">

@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import { Flame, UserCheck } from 'lucide-react';
+import PublisherList, { type PublisherCard } from '@/components/admin/PublisherList';
 import { formatPrice } from '@/lib/utils';
 import { ui } from '@/lib/ui';
 
 type Trending = { id: string; name: string; category: string | null; sold_total: number; units_30d: number; revenue_30d: number };
-type PublisherRow = { admin_id: string | null; admin_name: string | null; category: string; products: number };
+export type PublisherRow = { admin_id: string | null; admin_name: string | null; category: string; products: number };
 export type ProductStatsData = { trending?: Trending[]; publishers?: PublisherRow[] };
 
 /** قسمان في لوحة الإحصائيات: المنتجات الأكثر انتشارًا، ومن نشر كم منتج في أي قسم */
-export default function ProductStats({ data, failed }: { data: ProductStatsData | null; failed: boolean }) {
+export default function ProductStats({ data, failed, phones = {} }: { data: ProductStatsData | null; failed: boolean; phones?: Record<string, string> }) {
   if (failed || !data) {
     return (
       <p className={ui.alertError}>
@@ -18,15 +19,15 @@ export default function ProductStats({ data, failed }: { data: ProductStatsData 
   }
 
   const trending = data.trending ?? [];
-  const byAdmin = new Map<string, { name: string; total: number; cats: { category: string; products: number }[] }>();
+  const byAdmin = new Map<string, { key: string; phone: string; name: string; total: number; cats: { category: string; products: number }[] }>();
   for (const r of data.publishers ?? []) {
     const key = r.admin_id ?? 'unknown';
-    const entry = byAdmin.get(key) ?? { name: r.admin_id ? r.admin_name || 'أدمن' : 'غير محدد (منتجات قبل بدء التتبع)', total: 0, cats: [] };
+    const entry = byAdmin.get(key) ?? { key, phone: r.admin_id ? phones[r.admin_id] ?? '' : '', name: r.admin_id ? r.admin_name || 'أدمن' : 'غير محدد (منتجات قبل بدء التتبع)', total: 0, cats: [] };
     entry.total += Number(r.products);
     entry.cats.push({ category: r.category, products: Number(r.products) });
     byAdmin.set(key, entry);
   }
-  const admins = [...byAdmin.values()].sort((a, b) => b.total - a.total);
+  const admins: PublisherCard[] = [...byAdmin.values()].sort((a, b) => b.total - a.total);
 
   return (
     <>
@@ -66,23 +67,7 @@ export default function ProductStats({ data, failed }: { data: ProductStatsData 
         {admins.length === 0 ? (
           <p className="text-sm text-gray-500">لا توجد منتجات منشورة بعد.</p>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {admins.map((a) => (
-              <div key={a.name} className="rounded-xl border border-gray-200 p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="font-bold">{a.name}</p>
-                  <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-extrabold text-brand-700">{a.total} منتج</span>
-                </div>
-                <ul className="space-y-1 text-sm text-gray-700">
-                  {a.cats.map((c) => (
-                    <li key={c.category} className="flex justify-between border-t border-gray-100 pt-1">
-                      <span>{c.category}</span><span className="font-semibold">{c.products}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <PublisherList admins={admins} />
         )}
       </section>
     </>

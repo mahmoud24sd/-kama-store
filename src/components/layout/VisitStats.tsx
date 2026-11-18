@@ -27,7 +27,6 @@ export default async function VisitStats() {
           <h3 className="mb-1 text-center font-bold text-white">📊 إحصائيات الزوار (للإدارة فقط)</h3>
           <p className="mb-3 text-center text-xs text-gray-400">
             إجمالي الزيارات: <b dir="ltr" className="text-white">{(totalVisits ?? sum).toLocaleString('en-US')}</b> · متسجّل بالدول: <b dir="ltr" className="text-white">{sum.toLocaleString('en-US')}</b>
-            <br />الزيارة بتتحسب مرة لكل متصفح كل 30 دقيقة.
           </p>
           <ul className="space-y-1.5">
             {top.map((r) => {

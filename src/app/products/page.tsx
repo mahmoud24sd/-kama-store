@@ -4,6 +4,8 @@ import { SearchX } from 'lucide-react';
 import FilterSidebar from '@/components/product/FilterSidebar';
 import ProductGrid from '@/components/product/ProductGrid';
 import { getActiveBrands, getCategories, getFavoriteIds, searchProducts } from '@/lib/queries';
+import AdFrame from '@/components/layout/AdFrame';
+import { getProfile } from '@/lib/auth';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'المنتجات' };
@@ -47,6 +49,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   ]);
 
   // يبني رابطًا يحافظ على الفلاتر الحالية
+  const viewer = await getProfile().catch(() => null);
+  const showAd = !viewer || (viewer.role !== 'owner' && viewer.role !== 'admin');
+
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
     const base: Record<string, string | undefined> = {
@@ -82,6 +87,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
         </div>
+
+        {showAd && <div className="mb-3 overflow-hidden"><AdFrame /></div>}
 
         {result.products.length === 0 ? (
           <div className="rounded-xl bg-white p-12 text-center shadow-sm">

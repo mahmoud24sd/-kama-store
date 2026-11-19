@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   { key: 'settings', label: 'إعدادات التواصل' },
   { key: 'visits', label: 'عدد الزيارات' },
   { key: 'ad_codes', label: 'تشغيل وإيقاف الإعلانات التلقائية' },
+  { key: 'ad_codes_manage', label: 'إضافة وحذف أكواد الإعلانات (خطر: الكود بيشتغل عند كل الزوار)' },
   { key: 'ad_stats', label: 'إحصائيات الإعلانات والأرباح' },
   { key: 'published_count', label: 'عدد المنتجات المنشورة على الموقع' },
   { key: 'social', label: 'النشر على فيسبوك وانستجرام' },

@@ -62,7 +62,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       pendingResets = 0;
     }
   }
-  const links = LINKS.filter((l) => (l.owner ? profile.role === 'owner' : l.perm ? hasPermission(profile, l.perm) || (l.perm === 'products' && l.href === '/admin/products' && hasPermission(profile, 'bot_publish')) : true));
+  const links = LINKS.filter((l) => (l.owner ? profile.role === 'owner' : l.perm ? hasPermission(profile, l.perm) || (l.perm === 'products' && l.href === '/admin/products' && hasPermission(profile, 'bot_publish')) || (l.href === '/admin/ad-codes' && hasPermission(profile, 'ad_codes_manage')) : true));
   return (
     <div className="grid gap-4 md:grid-cols-[13rem_1fr]">
       <nav aria-label="لوحة التحكم" className="flex gap-1 overflow-x-auto rounded-xl bg-white p-2 shadow-sm md:flex-col md:self-start">

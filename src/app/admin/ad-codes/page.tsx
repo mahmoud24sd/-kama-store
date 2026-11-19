@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { addAdCode, deleteAdCode, toggleAdCode, toggleAllAdCodes } from '@/app/actions/adCodes';
-import { requirePermission } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 import type { AdCode } from '@/lib/adCodes';
 import { AD_PLACEMENTS } from '@/lib/siteAds';
 import { ui } from '@/lib/ui';
@@ -10,9 +12,10 @@ export const metadata: Metadata = { title: 'أكواد الإعلانات' };
 const TYPE: Record<string, string> = { script: 'سكربت', container: 'بانر Native', banner: 'بانر', link: 'رابط إعلان' };
 
 export default async function AdCodesPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  const { supabase, profile } = await requirePermission('ad_codes');
+  const { supabase, profile } = await requireAdmin();
+  if (!hasPermission(profile, 'ad_codes') && !hasPermission(profile, 'ad_codes_manage')) redirect('/admin/no-access');
   const sp = await searchParams;
-  const isOwner = profile.role === 'owner';
+  const isOwner = hasPermission(profile, 'ad_codes_manage'); // يضيف ويحذف
   const { data, error } = await supabase.from('ad_codes').select('*').order('sort_order').order('created_at');
   const codes = (data ?? []) as AdCode[];
   const placeLabel = (v: string) => (v === 'global' ? 'كل الصفحات (خلفية)' : AD_PLACEMENTS.find((p) => p.value === v)?.label ?? v);
@@ -63,7 +66,7 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
             <textarea name="code" required rows={5} dir="ltr" placeholder={'<script async src="https://..."></script>\n<div id="container-..."></div>'} className={`${ui.input} font-mono text-xs`} /></div>
           <div><label className={ui.label}>لو لينك: النص اللي يظهر على الزرار</label><input name="link_label" placeholder="🎁 عروض مميزة" className={ui.input} /></div>
           <div className="flex items-end"><button className={ui.btnDark}>إضافة وتشغيل</button></div>
-          <p className="text-xs text-gray-500 md:col-span-2">الموقع بيقرا من الكود بس عنوان السكربت والمقاس والمعرّف، وبيبني الإعلان بنفسه. الأكواد دي بتشتغل عند كل زائر، فالإضافة والحذف للمالك بس. الأدمن بيشغّل ويوقف بس.</p>
+          <p className="text-xs text-gray-500 md:col-span-2">الموقع بيقرا من الكود بس عنوان السكربت والمقاس والمعرّف، وبيبني الإعلان بنفسه. الأكواد دي بتشتغل عند كل زائر، فالإضافة والحذف للمالك أو لأدمن معاه صلاحية خاصة.</p>
         </form>
       )}
     </div>

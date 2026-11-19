@@ -5,16 +5,17 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { parseAdCode } from '@/lib/adCodes';
 import { assertPermission } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 import { AD_PLACEMENTS } from '@/lib/siteAds';
 
 const back = (msg: string, ok = false): never => redirect(`/admin/ad-codes?${ok ? 'ok' : 'error'}=${encodeURIComponent(msg)}`);
 const bust = () => { revalidateTag('ad-codes'); revalidatePath('/', 'layout'); };
 const PLACES = ['global', ...AD_PLACEMENTS.map((p) => p.value)];
 
-/** إضافة كود إعلان: للمالك بس (الكود بيشتغل عند كل زائر، فمش بنسيبه لأي أدمن) */
+/** إضافة كود إعلان: للمالك أو أدمن معاه صلاحية «إضافة وحذف أكواد الإعلانات» */
 export async function addAdCode(formData: FormData) {
-  const { supabase, profile } = await assertPermission('ad_codes');
-  if (profile.role !== 'owner') return back('إضافة الأكواد للمالك بس');
+  const { supabase, profile } = await assertPermission('ad_codes_manage');
+  if (!hasPermission(profile, 'ad_codes_manage')) return back('إضافة الأكواد محتاجة صلاحية من المالك');
   const name = String(formData.get('name') ?? '').trim().slice(0, 100);
   const placement = String(formData.get('placement') ?? '');
   if (name.length < 2) return back('اكتب اسم للإعلان (مثلًا: Monetag بانر)');
@@ -47,8 +48,8 @@ export async function toggleAllAdCodes(formData: FormData) {
 }
 
 export async function deleteAdCode(formData: FormData) {
-  const { supabase, profile } = await assertPermission('ad_codes');
-  if (profile.role !== 'owner') return back('الحذف للمالك بس');
+  const { supabase, profile } = await assertPermission('ad_codes_manage');
+  if (!hasPermission(profile, 'ad_codes_manage')) return back('الحذف محتاج صلاحية من المالك');
   const id = z.string().uuid().safeParse(formData.get('id'));
   if (!id.success) return;
   await supabase.from('ad_codes').delete().eq('id', id.data);

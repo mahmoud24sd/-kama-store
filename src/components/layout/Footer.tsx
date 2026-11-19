@@ -5,14 +5,20 @@ import { TikTokIcon } from './SocialIcons';
 import { getContactSettings, whatsappLink } from '@/lib/settings';
 import VisitTracker from './VisitCounter';
 import VisitStats from './VisitStats';
+import AdBanner from './AdBanner';
+import { getProfile } from '@/lib/auth';
 
 export default async function Footer() {
   const c = await getContactSettings();
+  const viewer = await getProfile().catch(() => null);
+  const showAd = !viewer || (viewer.role !== 'owner' && viewer.role !== 'admin'); // الإعلان للزوار والعملاء بس
   const { email, phone, facebook, instagram, tiktok } = c;
   const whatsapp = c.whatsapp ? whatsappLink(c.whatsapp) : '';
   const hasContact = Boolean(email || phone || whatsapp || facebook || instagram || tiktok);
 
   return (
+    <>
+      {showAd && <AdBanner />}
     <footer className="mt-10 text-sm text-gray-300">
       <a href="#top" className="block bg-brand-800 py-3 text-center text-white hover:bg-brand-700">
         العودة للأعلى
@@ -119,5 +125,6 @@ export default async function Footer() {
         </div>
       </div>
     </footer>
+    </>
   );
 }

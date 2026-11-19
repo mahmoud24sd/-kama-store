@@ -11,7 +11,7 @@ import ReviewForm from '@/components/product/ReviewForm';
 import Stars from '@/components/product/Stars';
 import { getUser } from '@/lib/auth';
 import { parseDetailLines } from '@/lib/productDetails';
-import { getFavoriteIds, getProductBySlug, hasPurchased } from '@/lib/queries';
+import { getFavoriteIds, getProductBySlug } from '@/lib/queries';
 import { discountPercent, formatDate, formatPrice, safeDecode, sortedImages } from '@/lib/utils';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -34,7 +34,7 @@ export default async function ProductPage({ params }: Props) {
 
   const { product, related, reviews } = result;
   const [favorites, user] = await Promise.all([getFavoriteIds(), getUser()]);
-  const canReview = user ? await hasPurchased(product.id) : false;
+  const canReview = Boolean(user); // أي مستخدم مسجّل يقدر يقيّم
   const alreadyReviewed = user ? reviews.some((r) => r.user_id === user.id) : false;
 
   const images = sortedImages(product).map((i) => i.url);

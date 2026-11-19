@@ -19,8 +19,8 @@ export default function ReviewForm({ productId, slug }: { productId: string; slu
         <span className={ui.label}>تقييمك</span>
         <div className="flex gap-1" dir="ltr">
           {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" onClick={() => setRating(n)} aria-label={`${n} نجوم`}>
-              <Star className={`h-7 w-7 ${n <= rating ? 'fill-accent-500 text-accent-500' : 'text-gray-300'}`} />
+            <button key={n} type="button" onClick={() => setRating(n)} aria-label={`${n} نجوم`} className="p-0.5">
+              <Star className={`h-8 w-8 ${n <= rating ? 'fill-accent-500 text-accent-500' : 'text-gray-300 hover:text-accent-400'}`} />
             </button>
           ))}
         </div>
@@ -32,7 +32,7 @@ export default function ReviewForm({ productId, slug }: { productId: string; slu
       {state.error && <p className={ui.alertError}>{state.error}</p>}
       {state.message && <p className={ui.alertOk}>{state.message}</p>}
       <button type="submit" disabled={pending || rating === 0} className={ui.btnDark}>
-        {pending ? 'جارٍ الإرسال...' : 'إرسال التقييم'}
+        {pending ? 'جارٍ الإرسال...' : rating === 0 ? 'اختار عدد النجوم الأول' : 'إرسال التقييم'}
       </button>
     </form>
   );

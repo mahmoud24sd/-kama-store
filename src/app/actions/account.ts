@@ -126,8 +126,7 @@ export async function submitReview(_prev: FormState, formData: FormData): Promis
   });
   if (error) {
     if (error.code === '23505') return { error: 'لقد قمت بتقييم هذا المنتج من قبل' };
-    // سياسة RLS تسمح بالتقييم فقط لمن اشترى المنتج
-    return { error: 'يمكن تقييم المنتج بعد شرائه فقط' };
+    return { error: 'تعذّر حفظ التقييم. جرّب تاني بعد شوية' };
   }
 
   revalidatePath(`/products/${parsed.data.slug}`);

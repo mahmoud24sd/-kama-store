@@ -22,7 +22,7 @@ export default function AdCodeSlot({ code }: { code: Pick<AdCode, 'type' | 'src'
   if (code.type === 'banner' && code.src && code.ad_key) {
     const doc = `<!doctype html><html><body style="margin:0;overflow:hidden"><script>atOptions={'key':'${code.ad_key}','format':'iframe','height':${code.height},'width':${code.width},'params':{}};</script><script src="${code.src}"></script></body></html>`;
     return (
-      <div className={`${(code.width ?? 0) > 400 ? 'hidden md:flex' : 'flex'} justify-center overflow-hidden`} aria-label="إعلان">
+      <div className={`${(code.width ?? 0) > 400 ? 'hidden md:flex' : (code.width ?? 0) === 320 ? 'flex md:hidden' : 'flex'} justify-center overflow-hidden`} aria-label="إعلان">
         <iframe title="إعلان" srcDoc={doc} width={code.width ?? 300} height={code.height ?? 250} scrolling="no" loading="lazy" className="max-w-full border-0" />
       </div>
     );

@@ -15,7 +15,6 @@ export async function createSiteAd(formData: FormData) {
   const { supabase } = await assertPermission('ads');
   const p = z.object({
     advertiser: z.string().trim().min(2, 'اكتب اسم المعلن').max(100),
-    placement: z.enum(AD_PLACEMENTS.map((x) => x.value) as [string, ...string[]], { message: 'اختار مكان الإعلان' }),
     kind: z.enum(['image', 'video']),
     link_url: z.string().trim().max(500).refine((v) => !v || /^https?:\/\//i.test(v), 'رابط المعلن لازم يبدأ بـ https://'),
     media_url: z.string().trim().max(500),
@@ -23,6 +22,8 @@ export async function createSiteAd(formData: FormData) {
     starts_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'اختار تاريخ البداية'),
     ends_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'اختار تاريخ النهاية'),
   }).safeParse(Object.fromEntries(formData));
+  const places = formData.getAll('placement').map(String).filter((v) => AD_PLACEMENTS.some((x) => x.value === v));
+  if (!places.length) return back('علّم على مكان واحد على الأقل يظهر فيه الإعلان');
   if (!p.success) return back(p.error.issues[0].message);
   const d = p.data;
   if (d.ends_on < d.starts_on) return back('تاريخ النهاية قبل البداية');
@@ -39,8 +40,8 @@ export async function createSiteAd(formData: FormData) {
   }
   if (!media || !/^https?:\/\//i.test(media)) return back(d.kind === 'image' ? 'ارفع صورة الإعلان' : 'حط رابط الفيديو (يوتيوب أو رابط مباشر)');
 
-  const { error } = await supabase.from('site_ads').insert({ advertiser: d.advertiser, placement: d.placement, kind: d.kind, media_url: media, link_url: d.link_url || null, price: d.price, starts_on: d.starts_on, ends_on: d.ends_on });
-  if (error) return back('تعذّر الحفظ. اتأكد إنك شغّلت ملف 029 في Supabase');
+  const { error } = await supabase.from('site_ads').insert(places.map((pl) => ({ advertiser: d.advertiser, placement: pl, kind: d.kind, media_url: media, link_url: d.link_url || null, price: places.length > 1 ? 0 : d.price, starts_on: d.starts_on, ends_on: d.ends_on })));
+  if (error) return back('تعذّر الحفظ. اتأكد إنك شغّلت ملفي 029 و 030 في Supabase');
   bust();
   return back('اتضاف الإعلان', true);
 }

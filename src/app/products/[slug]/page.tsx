@@ -182,6 +182,8 @@ export default async function ProductPage({ params }: Props) {
         </div>
       </section>
 
+      <SiteAds placement="product_bottom" />
+
       {related.length > 0 && (
         <section className="rounded-xl bg-white p-4 shadow-sm">
           <h2 className="mb-3 text-xl font-extrabold">منتجات مشابهة</h2>

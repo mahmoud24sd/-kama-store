@@ -103,6 +103,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <ProductGrid products={result.products} favorites={favorites} />
         )}
 
+        <SiteAds placement="products_bottom" className="mt-4" />
+
         {result.pages > 1 && (
           <nav className="mt-6 flex flex-wrap justify-center gap-1.5" aria-label="الصفحات">
             {(() => {

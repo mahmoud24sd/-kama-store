@@ -27,14 +27,25 @@ export default async function Placements({ searchParams }: { searchParams: Promi
       <form action={createSiteAd} encType="multipart/form-data" className={`${ui.card} grid gap-3 p-4 md:grid-cols-2`}>
         <h2 className="font-bold md:col-span-2">إضافة إعلان جديد</h2>
         <div><label className={ui.label}>اسم المعلن (الشركة)</label><input name="advertiser" required className={ui.input} /></div>
-        <div><label className={ui.label}>المكان</label>
-          <select name="placement" className={ui.input}>{AD_PLACEMENTS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></div>
+        <fieldset className="md:col-span-2 rounded-lg border border-gray-200 p-3">
+          <legend className="px-1 text-sm font-semibold">اختار الأماكن اللي يظهر فيها (تقدر تختار أكتر من مكان)</legend>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[...new Set(AD_PLACEMENTS.map((x) => x.page))].map((pg) => (
+              <div key={pg}>
+                <p className="mb-1 text-sm font-bold text-brand-700">{pg}</p>
+                {AD_PLACEMENTS.filter((x) => x.page === pg).map((x) => (
+                  <label key={x.value} className="flex items-center gap-2 py-0.5 text-sm"><input type="checkbox" name="placement" value={x.value} /> {x.label}</label>
+                ))}
+              </div>
+            ))}
+          </div>
+        </fieldset>
         <div><label className={ui.label}>النوع</label>
           <select name="kind" className={ui.input}><option value="image">صورة (بانر)</option><option value="video">فيديو</option></select></div>
         <div><label className={ui.label}>رابط المعلن (لما الزائر يدوس)</label><input name="link_url" placeholder="https://..." dir="ltr" className={ui.input} /></div>
         <div><label className={ui.label}>صورة الإعلان (للنوع صورة)</label><input type="file" name="image" accept="image/*" className={ui.input} /></div>
         <div><label className={ui.label}>رابط الفيديو (للنوع فيديو: يوتيوب أو رابط مباشر)</label><input name="media_url" placeholder="https://youtube.com/watch?v=..." dir="ltr" className={ui.input} /></div>
-        <div><label className={ui.label}>السعر اللي اتفقت عليه (للتسجيل بس)</label><input type="number" name="price" min="0" step="1" defaultValue="0" className={ui.input} /></div>
+        <div><label className={ui.label}>السعر اللي اتفقت عليه (لو اخترت أكتر من مكان بيتسجّل 0 لكل مكان، سجّله في ملاحظاتك)</label><input type="number" name="price" min="0" step="1" defaultValue="0" className={ui.input} /></div>
         <div className="grid grid-cols-2 gap-2">
           <div><label className={ui.label}>من</label><input type="date" name="starts_on" defaultValue={today} required className={ui.input} /></div>
           <div><label className={ui.label}>إلى</label><input type="date" name="ends_on" required className={ui.input} /></div>
@@ -53,7 +64,7 @@ export default async function Placements({ searchParams }: { searchParams: Promi
               <div className="flex items-center justify-between gap-2">
                 <b>{r.advertiser}</b><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${cls}`}>{st}</span>
               </div>
-              <p className="text-xs text-gray-500">{AD_PLACEMENTS.find((p) => p.value === r.placement)?.label} · {r.kind === 'video' ? 'فيديو' : 'صورة'} · {r.starts_on} ← {r.ends_on} · {Number(r.price).toLocaleString('en-US')} ج.م</p>
+              <p className="text-xs text-gray-500">{AD_PLACEMENTS.find((p) => p.value === r.placement)?.page} › {AD_PLACEMENTS.find((p) => p.value === r.placement)?.label} · {r.kind === 'video' ? 'فيديو' : 'صورة'} · {r.starts_on} ← {r.ends_on} · {Number(r.price).toLocaleString('en-US')} ج.م</p>
               {r.kind === 'image' && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={r.media_url} alt="" className="max-h-28 rounded border border-gray-100 object-contain" />

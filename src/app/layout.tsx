@@ -1,3 +1,4 @@
+import SiteAds from '@/components/layout/SiteAds';
 import type { Metadata, Viewport } from 'next';
 import { Cairo } from 'next/font/google';
 import './globals.css';
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {isSupabaseConfigured ? (
           <CartProvider>
             <Header />
+            <div className="mx-auto max-w-7xl px-3 pt-3 empty:hidden"><SiteAds placement="header_top" /></div>
             <main className="mx-auto min-h-[60vh] min-w-0 max-w-7xl px-3 py-4">{children}</main>
             <Footer />
             <SafeBoundary><ChatWidget /></SafeBoundary>

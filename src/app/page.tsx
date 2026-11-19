@@ -73,6 +73,7 @@ export default async function HomePage() {
       )}
 
       <Section title={t('best_sellers')} href="/products?sort=best" products={data.best} favorites={favorites} />
+      <SiteAds placement="home_middle" />
       <Section title={t('todays_deals')} href="/products?deals=1" products={data.deals} favorites={favorites} accent />
       <Section title={t('recommended')} href="/products?sort=rating" products={data.recommended} favorites={favorites} />
       <Section title={t('new_arrivals')} href="/products?sort=newest" products={data.fresh} favorites={favorites} />
@@ -94,6 +95,7 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+      <SiteAds placement="home_bottom" />
     </div>
   );
 }

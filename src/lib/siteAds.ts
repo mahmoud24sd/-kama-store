@@ -3,10 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase/config';
 
 export const AD_PLACEMENTS = [
-  { value: 'home_top', label: 'الصفحة الرئيسية (فوق الأقسام)' },
-  { value: 'products_top', label: 'صفحة المنتجات (فوق الشبكة)' },
-  { value: 'product_page', label: 'صفحة المنتج (تحت زر الشراء)' },
-  { value: 'footer_top', label: 'أسفل كل الصفحات (فوق الفوتر)' },
+  { value: 'header_top', label: 'أعلى كل الصفحات (تحت الهيدر)', page: 'كل الصفحات' },
+  { value: 'footer_top', label: 'أسفل كل الصفحات (فوق الفوتر)', page: 'كل الصفحات' },
+  { value: 'home_top', label: 'فوق الأقسام', page: 'الصفحة الرئيسية' },
+  { value: 'home_middle', label: 'في النص (بعد الأكثر مبيعًا)', page: 'الصفحة الرئيسية' },
+  { value: 'home_bottom', label: 'في آخر الصفحة', page: 'الصفحة الرئيسية' },
+  { value: 'products_top', label: 'فوق شبكة المنتجات', page: 'صفحة المنتجات' },
+  { value: 'products_bottom', label: 'تحت المنتجات', page: 'صفحة المنتجات' },
+  { value: 'product_page', label: 'تحت زر الشراء', page: 'صفحة المنتج' },
+  { value: 'product_bottom', label: 'قبل المنتجات المشابهة', page: 'صفحة المنتج' },
 ] as const;
 export type AdPlacement = (typeof AD_PLACEMENTS)[number]['value'];
 

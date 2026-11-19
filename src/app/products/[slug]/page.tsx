@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import SiteAds from '@/components/layout/SiteAds';
 import ProductGallery from '@/components/product/ProductGallery';
 import PurchasePanel from '@/components/product/PurchasePanel';
 import { getSiteUrl } from '@/lib/site';
@@ -116,6 +117,7 @@ export default async function ProductPage({ params }: Props) {
                 variants={product.product_variants ?? []}
                 isFavorite={favorites.has(product.id)}
               />
+              <SiteAds placement="product_page" className="mt-4" />
 
               <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
                 شحن مجاني للطلبات فوق 1000 ج.م · الدفع عند الاستلام متاح

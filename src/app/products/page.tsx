@@ -4,6 +4,7 @@ import { SearchX } from 'lucide-react';
 import FilterSidebar from '@/components/product/FilterSidebar';
 import ProductGrid from '@/components/product/ProductGrid';
 import { getActiveBrands, getCategories, getFavoriteIds, searchProducts } from '@/lib/queries';
+import SiteAds from '@/components/layout/SiteAds';
 import AdFrame from '@/components/layout/AdFrame';
 import { getProfile } from '@/lib/auth';
 import { ui } from '@/lib/ui';
@@ -88,6 +89,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           </div>
         </div>
 
+        <SiteAds placement="products_top" className="mb-3" />
         {showAd && <div className="mb-3 overflow-hidden"><AdFrame /></div>}
 
         {result.products.length === 0 ? (

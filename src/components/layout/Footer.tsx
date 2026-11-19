@@ -5,6 +5,7 @@ import { TikTokIcon } from './SocialIcons';
 import { getContactSettings, whatsappLink } from '@/lib/settings';
 import VisitTracker from './VisitCounter';
 import VisitStats from './VisitStats';
+import SiteAds from './SiteAds';
 import AdBanner from './AdBanner';
 import { getProfile } from '@/lib/auth';
 
@@ -18,6 +19,7 @@ export default async function Footer() {
 
   return (
     <>
+      <div className="mx-auto mt-8 max-w-7xl px-4"><SiteAds placement="footer_top" /></div>
       {showAd && <AdBanner />}
     <footer className="mt-10 text-sm text-gray-300">
       <a href="#top" className="block bg-brand-800 py-3 text-center text-white hover:bg-brand-700">

@@ -30,6 +30,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/chat', label: 'الدردشة', icon: MessageCircle, perm: 'chat' },
   { href: '/admin/password-requests', label: 'طلبات كلمة المرور', icon: KeyRound, perm: 'temp_password' },
   { href: '/admin/reviews', label: 'التقييمات', icon: Star, perm: 'reviews' },
+  { href: '/admin/placements', label: 'إعلانات الموقع', icon: Megaphone, perm: 'ads' },
   { href: '/admin/ad-stats', label: 'إحصائيات الإعلانات', icon: BarChart3, perm: 'ad_stats' },
   { href: '/admin/earnings', label: 'الأرباح والسحب', icon: Wallet, perm: 'withdraw' },
   { href: '/admin/users', label: 'المستخدمون', icon: UserCog, owner: true },

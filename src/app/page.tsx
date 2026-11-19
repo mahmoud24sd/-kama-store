@@ -1,3 +1,4 @@
+import SiteAds from '@/components/layout/SiteAds';
 import Link from 'next/link';
 import { CreditCard, ShieldCheck, Truck } from 'lucide-react';
 import Section from '@/components/home/Section';
@@ -42,6 +43,8 @@ export default async function HomePage() {
           </ul>
         </div>
       </section>
+
+      <SiteAds placement="home_top" />
 
       {/* الأقسام */}
       {topLevel.length > 0 && (

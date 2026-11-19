@@ -22,6 +22,7 @@ export const PERMISSIONS = [
   { key: 'sources', label: 'ربط المتاجر' },
   { key: 'settings', label: 'إعدادات التواصل' },
   { key: 'visits', label: 'عدد الزيارات' },
+  { key: 'ad_codes', label: 'تشغيل وإيقاف الإعلانات التلقائية' },
   { key: 'ad_stats', label: 'إحصائيات الإعلانات والأرباح' },
   { key: 'published_count', label: 'عدد المنتجات المنشورة على الموقع' },
   { key: 'social', label: 'النشر على فيسبوك وانستجرام' },

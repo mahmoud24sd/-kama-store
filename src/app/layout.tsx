@@ -42,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Header />
             <div className="mx-auto max-w-7xl px-3 pt-3 empty:hidden"><SiteAds placement="header_top" /></div>
             <main className="mx-auto min-h-[60vh] min-w-0 max-w-7xl px-3 py-4">{children}</main>
+            <SiteAds placement="global" />
             <Footer />
             <SafeBoundary><ChatWidget /></SafeBoundary>
             <SafeBoundary><StaffChatNotifier /></SafeBoundary>

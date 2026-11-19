@@ -3,15 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase/config';
 import { getProfile } from '@/lib/auth';
 import { embedUrl, getAds } from '@/lib/siteAds';
+import { getAdCodes } from '@/lib/adCodes';
+import AdCodeSlot from './AdCodeSlot';
 
 /** إعلانات مباشرة من براندات في مكان معيّن. مش بتظهر للمالك والأدمن (عشان العدّاد ميتلخبطش) */
 export default async function SiteAds({ placement, className = '' }: { placement: string; className?: string }) {
   const viewer = await getProfile().catch(() => null);
   if (viewer && (viewer.role === 'owner' || viewer.role === 'admin')) return null;
-  const ads = await getAds(placement);
-  if (!ads.length) return null;
+  const [ads, codes] = await Promise.all([getAds(placement), getAdCodes(placement)]);
+  if (!ads.length && !codes.length) return null;
 
-  after(async () => {
+  if (ads.length) after(async () => {
     try {
       const sb = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false, autoRefreshToken: false } });
       await Promise.all(ads.map((a) => sb.rpc('ad_view', { p_id: a.id })));
@@ -20,6 +22,7 @@ export default async function SiteAds({ placement, className = '' }: { placement
 
   return (
     <div className={`space-y-3 ${className}`}>
+      {codes.map((c) => <AdCodeSlot key={c.id} code={c} />)}
       {ads.map((a) => {
         const emb = a.kind === 'video' ? embedUrl(a.media_url) : null;
         return (

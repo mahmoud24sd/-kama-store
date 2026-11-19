@@ -1,4 +1,5 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { revalidateTag } from 'next/cache';
 import { after, NextResponse } from 'next/server';
 import { uploadImage } from '@/lib/imageStore';
 import { createAdminClient, hasServiceRole } from '@/lib/supabase/admin';
@@ -396,6 +397,35 @@ const formatButtons = (all: boolean) => [
   [{ text: '🌐 رفع للموقع (مسودة + نشر)', data: `up:${all ? 'all' : 'new'}` }],
 ];
 
+const AD_TYPE: Record<string, string> = { script: 'سكربت', container: 'بانر Native', banner: 'بانر', link: 'رابط إعلان' };
+
+/** أكواد الإعلانات من البوت (للمالك): قائمة وتفاصيل وتشغيل وإيقاف */
+async function adCommands(db: Db, chat: number | string, cmd: string, arg: string, isOwner: boolean) {
+  if (!isOwner) return say(chat, 'أوامر الإعلانات للمالك بس.');
+  const { data, error } = await db.from('ad_codes').select('*').order('sort_order').order('created_at');
+  if (error) return say(chat, 'لازم تشغّل ملف 031 في Supabase الأول عشان أكواد الإعلانات تشتغل.');
+  const rows = (data ?? []) as { id: string; name: string; type: string; src: string | null; ad_key: string | null; width: number | null; height: number | null; link_url: string | null; placement: string; is_active: boolean }[];
+  const done = () => revalidateTag('ad-codes');
+  if (cmd === '/ads') {
+    if (!rows.length) return say(chat, 'مفيش أكواد إعلانات لسه.');
+    return say(chat, ['أكواد الإعلانات (✅ شغّال، ⏸ موقوف):', ...rows.map((r, i) => `${i + 1}. ${r.is_active ? '✅' : '⏸'} ${r.name} — ${AD_TYPE[r.type] ?? r.type}`), '', '/ad 3 ← تفاصيل  |  /ad_on 3  /ad_off 3  |  /ads_on  /ads_off'].join('\n'));
+  }
+  if (cmd === '/ads_on' || cmd === '/ads_off') {
+    await db.from('ad_codes').update({ is_active: cmd === '/ads_on' }).not('id', 'is', null);
+    done();
+    return say(chat, cmd === '/ads_on' ? `✅ اشتغلت كل الإعلانات (${rows.length}).` : `⏸ اتوقفت كل الإعلانات (${rows.length}).`);
+  }
+  const n = Number(arg.replace(/\D/g, ''));
+  const r = rows[n - 1];
+  if (!n || !r) return say(chat, `اكتب رقم الإعلان من القائمة، مثلًا: ${cmd} 1\n(القائمة: /ads)`);
+  if (cmd === '/ad') {
+    return say(chat, [`${n}. ${r.name}`, `الحالة: ${r.is_active ? 'شغّال ✅' : 'موقوف ⏸'}`, `النوع: ${AD_TYPE[r.type] ?? r.type}${r.type === 'banner' ? ` ${r.width}×${r.height}` : ''}`, `المكان: ${r.placement}`, r.src ? `السكربت: ${r.src}` : '', r.link_url ? `الرابط: ${r.link_url}` : '', r.ad_key ? `المفتاح: ${r.ad_key}` : ''].filter(Boolean).join('\n'));
+  }
+  await db.from('ad_codes').update({ is_active: cmd === '/ad_on' }).eq('id', r.id);
+  done();
+  return say(chat, `${cmd === '/ad_on' ? '✅ اشتغل' : '⏸ اتوقف'}: ${r.name}\n(بيتطبق على الموقع خلال دقيقة)`);
+}
+
 async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
   const [cmdRaw, ...rest] = text.trim().split(/\s+/);
   const cmd = cmdRaw.split('@')[0].toLowerCase();
@@ -419,7 +449,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         '/exportall  ← نفس الشيء بكل منتجاتك',
         '/upload  ← ارفع الجديد للموقع كمسودة',
         '/category  ← اختار القسم اللي مسوداتك تتحفظ فيه',
-        ...(isOwner ? ['', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
+        ...(isOwner ? ['', '/ads  ← قائمة أكواد الإعلانات وحالتها', '/ad 3  ← تفاصيل إعلان', '/ad_on 3  /ad_off 3  ← شغّل أو وقّف إعلان', '/ads_on  /ads_off  ← شغّل أو وقّف كل الإعلانات', '', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
       ].join('\n'),
     );
   }
@@ -488,6 +518,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     return keyboard(chat, `اختار شكل الملف (الملف الواحد 500 منتج بالكتير):`, formatButtons(all));
   }
   if (cmd === '/upload') return uploadToSite(db, chat, by, false);
+  if (['/ads', '/ad', '/ad_on', '/ad_off', '/ads_on', '/ads_off'].includes(cmd)) return adCommands(db, chat, cmd, arg, isOwner);
   return say(chat, 'أمر غير معروف. اكتب /help');
 }
 

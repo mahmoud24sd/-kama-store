@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import { createSiteAd, deleteSiteAd, toggleSiteAd } from '@/app/actions/siteAds';
 import { requirePermission } from '@/lib/auth';
 import { AD_PLACEMENTS } from '@/lib/siteAds';
+import ZoomImage from '@/components/admin/ZoomImage';
 import { ui } from '@/lib/ui';
+
+const ytThumb = (u: string) => { try { const x = new URL(u); const id = x.hostname === 'youtu.be' ? x.pathname.slice(1) : x.hostname.endsWith('youtube.com') ? x.searchParams.get('v') : null; return id ? `https://img.youtube.com/vi/${encodeURIComponent(id)}/hqdefault.jpg` : null; } catch { return null; } };
 
 export const metadata: Metadata = { title: 'إعلانات الموقع' };
 
@@ -65,10 +68,8 @@ export default async function Placements({ searchParams }: { searchParams: Promi
                 <b>{r.advertiser}</b><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${cls}`}>{st}</span>
               </div>
               <p className="text-xs text-gray-500">{AD_PLACEMENTS.find((p) => p.value === r.placement)?.page} › {AD_PLACEMENTS.find((p) => p.value === r.placement)?.label} · {r.kind === 'video' ? 'فيديو' : 'صورة'} · {r.starts_on} ← {r.ends_on} · {Number(r.price).toLocaleString('en-US')} ج.م</p>
-              {r.kind === 'image' && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={r.media_url} alt="" className="max-h-28 rounded border border-gray-100 object-contain" />
-              )}
+              {r.kind === 'image' && <ZoomImage src={r.media_url} alt={r.advertiser} thumbClass="max-h-24 max-w-full" />}
+              {r.kind === 'video' && ytThumb(r.media_url) && <ZoomImage src={ytThumb(r.media_url) as string} alt={r.advertiser} thumbClass="max-h-24 max-w-full" />}
               <p className="text-sm">👁 {Number(r.impressions).toLocaleString('en-US')} مشاهدة · 👆 {Number(r.clicks).toLocaleString('en-US')} نقرة · {r.impressions ? ((r.clicks / r.impressions) * 100).toFixed(2) : '0'}%</p>
               <div className="flex gap-2">
                 <form action={toggleSiteAd}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="active" value={r.is_active ? '0' : '1'} /><button className={ui.btnOutline}>{r.is_active ? 'إيقاف' : 'تشغيل'}</button></form>

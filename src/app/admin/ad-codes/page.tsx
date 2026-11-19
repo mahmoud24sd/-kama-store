@@ -53,9 +53,6 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
               <b className="text-[13px] leading-5">{c.name}</b>
               <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${c.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-200 text-gray-600'}`}>{c.is_active ? 'شغّال' : 'موقوف'}</span>
             </div>
-            {c.type === 'banner' && c.width && c.height && (
-              <div className="mt-1 flex items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-[10px] text-gray-500" style={{ width: Math.min(c.width, 220), aspectRatio: `${c.width}/${c.height}`, maxWidth: '100%' }}>{c.width}×{c.height}</div>
-            )}
             <p className="mt-0.5 text-gray-500">{TYPE[c.type]} · {placeLabel(c.placement)}{c.type === 'banner' ? ` · ${c.width}×${c.height}` : ''}</p>
             <div className="mt-1.5 flex gap-1.5">
               <form action={toggleAdCode}><input type="hidden" name="id" value={c.id} /><input type="hidden" name="active" value={c.is_active ? '0' : '1'} /><button className={c.is_active ? ui.btnOutline : ui.btnDark}>{c.is_active ? '⏸ إيقاف' : '▶ تشغيل'}</button></form>

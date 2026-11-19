@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import type { AdCode } from '@/lib/adCodes';
 import { AD_PLACEMENTS } from '@/lib/siteAds';
+import AdCodeTree from '@/components/admin/AdCodeTree';
 import { ui } from '@/lib/ui';
 
 export const metadata: Metadata = { title: 'أكواد الإعلانات' };
@@ -18,6 +19,14 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
   const isOwner = hasPermission(profile, 'ad_codes_manage'); // يضيف ويحذف
   const { data, error } = await supabase.from('ad_codes').select('*').order('sort_order').order('created_at');
   const codes = (data ?? []) as AdCode[];
+  // اسم الأدمن اللي جاب الكود (الأدمن العادي ما بيشوفش أسماء غيره)
+  const ids = [...new Set(codes.map((c) => c.created_by).filter(Boolean) as string[])];
+  const names = new Map<string, string>();
+  if (ids.length) {
+    const { data: ps } = await supabase.from('profiles').select('id,full_name').in('id', ids);
+    for (const u of ps ?? []) names.set(u.id as string, (u.full_name as string) || 'أدمن');
+  }
+  const items = codes.map((c) => ({ ...c, adminName: !c.created_by ? 'غير محدد' : profile.role !== 'owner' && c.created_by !== profile.id ? 'أدمن' : names.get(c.created_by) ?? 'أدمن' }));
   const placeLabel = (v: string) => (v === 'global' ? 'كل الصفحات (خلفية)' : AD_PLACEMENTS.find((p) => p.value === v)?.label ?? v);
   const running = codes.filter((c) => c.is_active).length;
 
@@ -36,22 +45,23 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {codes.map((c) => (
-          <div key={c.id} className={`${ui.card} space-y-2 p-4 ${c.is_active ? '' : 'opacity-60'}`}>
-            <div className="flex items-center justify-between gap-2">
-              <b className="text-sm">{c.name}</b>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${c.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{c.is_active ? 'شغّال' : 'موقوف'}</span>
+      <AdCodeTree
+        items={items}
+        card={(c) => (
+          <div key={c.id} className={`rounded-lg border border-gray-200 p-2.5 text-xs ${c.is_active ? 'bg-white' : 'bg-gray-50 opacity-60'}`}>
+            <div className="flex items-start justify-between gap-1">
+              <b className="text-[13px] leading-5">{c.name}</b>
+              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${c.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-200 text-gray-600'}`}>{c.is_active ? 'شغّال' : 'موقوف'}</span>
             </div>
-            <p className="text-xs text-gray-500">{TYPE[c.type]} · {placeLabel(c.placement)}{c.type === 'banner' ? ` · ${c.width}×${c.height}` : ''}</p>
-            <div className="flex gap-2">
+            <p className="mt-0.5 text-gray-500">{TYPE[c.type]} · {placeLabel(c.placement)}{c.type === 'banner' ? ` · ${c.width}×${c.height}` : ''}</p>
+            <div className="mt-1.5 flex gap-1.5">
               <form action={toggleAdCode}><input type="hidden" name="id" value={c.id} /><input type="hidden" name="active" value={c.is_active ? '0' : '1'} /><button className={c.is_active ? ui.btnOutline : ui.btnDark}>{c.is_active ? '⏸ إيقاف' : '▶ تشغيل'}</button></form>
               {isOwner && <form action={deleteAdCode}><input type="hidden" name="id" value={c.id} /><button className={ui.btnOutline}>حذف</button></form>}
             </div>
           </div>
-        ))}
-        {codes.length === 0 && !error && <p className="text-sm text-gray-500">مفيش أكواد لسه.</p>}
-      </div>
+        )}
+      />
+      {codes.length === 0 && !error && <p className="text-sm text-gray-500">مفيش أكواد لسه.</p>}
 
       {isOwner && (
         <form action={addAdCode} className={`${ui.card} grid gap-3 p-4 md:grid-cols-2`}>

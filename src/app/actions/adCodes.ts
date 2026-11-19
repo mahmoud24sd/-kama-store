@@ -23,7 +23,9 @@ export async function addAdCode(formData: FormData) {
   const parsed = parseAdCode(String(formData.get('code') ?? ''));
   if ('error' in parsed) return back(parsed.error);
   const label = String(formData.get('link_label') ?? '').trim().slice(0, 60);
-  const { error } = await supabase.from('ad_codes').insert({ ...parsed, link_label: parsed.type === 'link' ? label || parsed.link_label : null, name, placement });
+  const row = { ...parsed, link_label: parsed.type === 'link' ? label || parsed.link_label : null, name, placement };
+  let { error } = await supabase.from('ad_codes').insert({ ...row, created_by: profile.id });
+  if (error) ({ error } = await supabase.from('ad_codes').insert(row)); // قبل تشغيل ملف 034
   if (error) return back('تعذّر الحفظ. اتأكد إنك شغّلت ملف 031 في Supabase');
   bust();
   return back('اتضاف الكود وشغّال', true);

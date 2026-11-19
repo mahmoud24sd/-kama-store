@@ -6,6 +6,7 @@ export type AdCode = {
   id: string; name: string; type: 'script' | 'container' | 'banner' | 'link';
   src: string | null; container_id: string | null; ad_key: string | null; width: number | null; height: number | null;
   link_url: string | null; link_label: string | null; placement: string; is_active: boolean; sort_order: number;
+  created_at?: string; created_by?: string | null;
 };
 
 export const getAdCodes = unstable_cache(

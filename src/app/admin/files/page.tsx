@@ -1,3 +1,4 @@
+import { viewerOf } from '@/lib/publishScope';
 import type { Metadata } from 'next';
 import FolderTree from '@/components/admin/FolderTree';
 import { requirePermission } from '@/lib/auth';
@@ -14,7 +15,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
   const canPublish = (['products', 'bot_publish', 'published'] as const).some((k) => hasPermission(profile, k));
   const canTrash = (['products', 'files'] as const).some((k) => hasPermission(profile, k));
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
-  const [{ folders }, cats] = await Promise.all([loadFolders(supabase, 'bot', 1, 300, 12), getAllCategories()]);
+  const [{ folders }, cats] = await Promise.all([loadFolders(supabase, 'bot', 1, 300, 12, viewerOf(profile)), getAllCategories()]);
 
   return (
     <div className="space-y-3">

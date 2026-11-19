@@ -2,6 +2,11 @@ import type { Profile } from '@/lib/types';
 
 type Sb = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** لو الأدمن مش مالك: يرجع id بتاعه عشان أسماء الأدمن التانيين تتخفى. المالك يشوف الكل (null) */
+export function viewerOf(p: Pick<Profile, 'id' | 'role'> | null | undefined): string | null {
+  return p && p.role !== 'owner' ? p.id : null;
+}
+
 /** أقسام النشر المحددة للأدمن (مخزّنة في permissions بالشكل cat:<id>). null = بدون قيود */
 export function restrictedMains(p: Pick<Profile, 'role' | 'permissions'> | null | undefined): string[] | null {
   if (!p || p.role === 'owner') return null;

@@ -17,14 +17,16 @@ type Stats = {
 };
 
 export default async function AdminDashboard() {
-  const { supabase } = await requirePermission('dashboard');
+  const { supabase, profile } = await requirePermission('dashboard');
   const [{ data: stats, error }, { data: recent }, productStats] = await Promise.all([
     supabase.rpc('admin_stats'),
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(8),
     supabase.rpc('admin_product_stats'),
   ]);
 
-  const adminIds = [...new Set(((productStats.data as ProductStatsData | null)?.publishers ?? []).map((r) => r.admin_id).filter(Boolean) as string[])];
+  const statsData = (productStats.data as ProductStatsData | null) ?? null;
+  if (statsData?.publishers && profile.role !== 'owner') statsData.publishers = statsData.publishers.filter((r) => r.admin_id === profile.id); // الأدمن يشوف نفسه بس
+  const adminIds = [...new Set((statsData?.publishers ?? []).map((r) => r.admin_id).filter(Boolean) as string[])];
   const phones: Record<string, string> = {};
   if (adminIds.length) {
     const { data: ps } = await supabase.from('profiles').select('id,phone').in('id', adminIds);
@@ -83,7 +85,7 @@ export default async function AdminDashboard() {
         )}
       </section>
 
-      <ProductStats data={(productStats.data as ProductStatsData | null) ?? null} failed={Boolean(productStats.error)} phones={phones} />
+      <ProductStats data={statsData} failed={Boolean(productStats.error)} phones={phones} />
 
       <section>
         <div className="mb-3 flex items-center justify-between">

@@ -1,3 +1,4 @@
+import { viewerOf } from '@/lib/publishScope';
 import type { Metadata } from 'next';
 import { bulkDraft, bulkTrash } from '@/app/actions/productFiles';
 import Pagination, { pageNum } from '@/components/admin/Pagination';
@@ -16,7 +17,7 @@ export default async function PublishedPage({ searchParams }: { searchParams: Pr
   const { supabase, profile } = await requirePermission('published');
   const sp = await searchParams;
   const { rows, total, missing, fileNames } = await loadList(supabase, true, pageNum(sp.pp));
-  const { folders } = await loadFolders(supabase, 'public', 1, 300, 12);
+  const { folders } = await loadFolders(supabase, 'public', 1, 300, 12, viewerOf(profile));
   const cats = await getAllCategories();
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
   const canDraft = (['products', 'bot_publish', 'drafts'] as const).some((k) => hasPermission(profile, k));

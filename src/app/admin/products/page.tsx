@@ -1,3 +1,4 @@
+import { viewerOf } from '@/lib/publishScope';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
@@ -45,7 +46,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   const products = (res.data ?? []) as unknown as Row[];
 
   const fileName = new Map<string, string>();
-  const folderData = term ? { folders: [], total: 0 } : await loadFolders(supabase, 'public', 1, 300, 12);
+  const folderData = term ? { folders: [], total: 0 } : await loadFolders(supabase, 'public', 1, 300, 12, viewerOf(profile));
   const folders = folderData.folders;
   const looseTotal = res.count ?? products.length;
   const cats = folders.length > 0 ? await getAllCategories() : [];

@@ -1,3 +1,4 @@
+import { viewerOf } from '@/lib/publishScope';
 import type { Metadata } from 'next';
 import { bulkEditDrafts, bulkPublish, bulkTrash } from '@/app/actions/productFiles';
 import { getAllCategories } from '@/lib/queries';
@@ -17,7 +18,7 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
   const { supabase, profile } = await requirePermission('drafts');
   const sp = await searchParams;
   const { rows, total, missing, fileNames } = await loadList(supabase, false, pageNum(sp.pp));
-  const { folders, total: folderTotal } = await loadFolders(supabase, 'draft', pageNum(sp.fp));
+  const { folders, total: folderTotal } = await loadFolders(supabase, 'draft', pageNum(sp.fp), 10, 60, viewerOf(profile));
   const cats = await getAllCategories();
   const canEdit = (['drafts_edit', 'products'] as const).some((k) => hasPermission(profile, k));
   const canPublish = (['products', 'bot_publish', 'published'] as const).some((k) => hasPermission(profile, k));

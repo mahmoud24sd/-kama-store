@@ -7,7 +7,7 @@ export type Folder = { id: string; name: string; source: string; markup: number;
 export type FolderKind = 'inbox' | 'draft' | 'public' | 'bot'; // bot = كل ملفات البوت بغض النظر عن المرحلة
 
 /** الملفات كفولدرات: بمنتجاتها، ووقت الرفع، واسم اللي رفع (أدمن الموقع أو أدمن البوت) */
-export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size = 10, perFolder = 60) {
+export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size = 10, perFolder = 60, viewerId: string | null = null) {
   const base = () => supabase.from('product_files').select('id,name,source,markup,is_public,created_at,created_by,tg_by', { count: 'exact' }).is('deleted_at', null).order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * size, page * size - 1);
   let res = kind === 'bot' ? await base().eq('source', 'bot') : await base().eq('stage', kind);
   const noStage = kind !== 'bot' && Boolean(res.error);
@@ -96,8 +96,8 @@ export async function loadFolders(supabase: Sb, kind: FolderKind, page = 1, size
     created_at: f.created_at,
     published_at: pubAt.get(f.id) ?? f.created_at,
     stage: stages.get(f.id),
-    publisher: (pubBy.get(f.id) && names.get(`u:${pubBy.get(f.id)}`)) || (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
-    by: (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
+    publisher: viewerId && (pubBy.get(f.id) ?? f.created_by) !== viewerId ? 'أدمن' : (pubBy.get(f.id) && names.get(`u:${pubBy.get(f.id)}`)) || (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
+    by: viewerId && f.created_by !== viewerId ? 'أدمن' : (f.created_by && names.get(`u:${f.created_by}`)) || (f.tg_by != null ? names.get(`t:${f.tg_by}`) || 'أدمن البوت' : '') || '—',
     products: byFile.get(f.id) ?? [],
     count: counts.get(f.id) ?? 0,
   }));

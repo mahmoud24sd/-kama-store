@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   description: 'Kama Store: متجر إلكتروني لكل احتياجاتك بأسعار مميزة وشحن سريع.',
   applicationName: 'Kama Store',
   verification: { google: '5ruHvNNcFcUfq-334AXvwwwHV3oMvMfoGFz5RtWJgio' },
+  other: { 'google-adsense-account': 'ca-pub-8189426632233417' },
   icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'Kama Store', statusBarStyle: 'default' },
 };
@@ -29,6 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // اتجاه RTL. عند إضافة الإنجليزية: اجعل lang و dir ديناميكيين حسب اللغة المختارة
     <html lang="ar" dir="rtl" className={cairo.variable}>
+      <head>
+        {/* Google AdSense */}
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8189426632233417" crossOrigin="anonymous" />
+      </head>
       <body id="top" className="min-h-screen overflow-x-clip font-sans">
         <PwaRegister />
         {isSupabaseConfigured ? (

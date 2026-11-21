@@ -10,6 +10,7 @@ import { slugify } from '@/lib/utils';
 import { writeXlsx } from '@/lib/xlsx';
 import { enqueueFile } from '@/lib/social';
 import { existingNames, hasTrashReason, normName } from '@/lib/dedupe';
+import { getAdStats } from '@/lib/adsterra';
 import { channelFromLink, fetchChannelPage, groupPosts } from '@/lib/tmeScrape';
 
 export const dynamic = 'force-dynamic';
@@ -400,7 +401,7 @@ const formatButtons = (all: boolean) => [
 const AD_TYPE: Record<string, string> = { script: 'سكربت', container: 'بانر Native', banner: 'بانر', link: 'رابط إعلان' };
 
 /** أكواد الإعلانات من البوت (للمالك): قائمة وتفاصيل وتشغيل وإيقاف */
-async function adCommands(db: Db, chat: number | string, cmd: string, arg: string, isOwner: boolean) {
+async function adCommands(db: Db, chat: number, cmd: string, arg: string, isOwner: boolean) {
   if (!isOwner) return say(chat, 'أوامر الإعلانات للمالك بس.');
   const { data, error } = await db.from('ad_codes').select('*').order('sort_order').order('created_at');
   if (error) return say(chat, 'لازم تشغّل ملف 031 في Supabase الأول عشان أكواد الإعلانات تشتغل.');
@@ -449,7 +450,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         '/exportall  ← نفس الشيء بكل منتجاتك',
         '/upload  ← ارفع الجديد للموقع كمسودة',
         '/category  ← اختار القسم اللي مسوداتك تتحفظ فيه',
-        ...(isOwner ? ['', '/ads  ← قائمة أكواد الإعلانات وحالتها', '/ad 3  ← تفاصيل إعلان', '/ad_on 3  /ad_off 3  ← شغّل أو وقّف إعلان', '/ads_on  /ads_off  ← شغّل أو وقّف كل الإعلانات', '', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
+        ...(isOwner ? ['', '/ads  ← قائمة أكواد الإعلانات وحالتها', '/ad 3  ← تفاصيل إعلان', '/ad_on 3  /ad_off 3  ← شغّل أو وقّف إعلان', '/ads_on  /ads_off  ← شغّل أو وقّف كل الإعلانات', '/earnings 7  ← أرباح الإعلانات (Adsterra) آخر 7 أيام', '', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
       ].join('\n'),
     );
   }
@@ -518,6 +519,15 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     return keyboard(chat, `اختار شكل الملف (الملف الواحد 500 منتج بالكتير):`, formatButtons(all));
   }
   if (cmd === '/upload') return uploadToSite(db, chat, by, false);
+  if (cmd === '/earnings' || cmd === '/profit') {
+    if (!isOwner) return say(chat, 'الأمر ده للمالك بس.');
+    const days = [1, 7, 30, 90].includes(Number(arg)) ? Number(arg) : 7;
+    const { stats, error } = await getAdStats(days);
+    if (error === 'nokey') return say(chat, 'الربط مع Adsterra لسه مش متفعّل. ضيف ADSTERRA_API_KEY في Vercel (الخطوات في صفحة /admin/ad-stats).');
+    if (error || !stats) return say(chat, `تعذّر جلب الأرقام من Adsterra دلوقتي (${error}). جرّب بعد شوية.`);
+    const f = (n: number, d = 0) => n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+    return say(chat, [`📈 أرباح الإعلانات (Adsterra) — ${days === 1 ? 'النهاردة' : `آخر ${days} يوم`}`, `👁 المشاهدات: ${f(stats.impressions)}`, `👆 النقرات: ${f(stats.clicks)} (${f(stats.ctr, 2)}%)`, `💵 الأرباح: $${f(stats.revenue, 2)}`, `📊 متوسط الأجر لكل 1000 مشاهدة: $${f(stats.cpm, 2)}`, '', '/earnings 1  |  /earnings 7  |  /earnings 30  |  /earnings 90'].join('\n'));
+  }
   if (['/ads', '/ad', '/ad_on', '/ad_off', '/ads_on', '/ads_off'].includes(cmd)) return adCommands(db, chat, cmd, arg, isOwner);
   return say(chat, 'أمر غير معروف. اكتب /help');
 }

@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BarChart3, Boxes, KeyRound, Link2, Layers, Megaphone, MessageCircle, Package, Percent, Settings, ShieldCheck, ShoppingBag, Star, Tag, Upload, UserCog, Users, Wallet } from 'lucide-react';
@@ -53,6 +54,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     if (r.error) r = await supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true);
     publishedCount = r.error ? null : (r.count ?? 0);
   }
+  // آخر ظهور للأدمن (للمالك يشوفه في «متابعة الأدمن»)
+  after(async () => { try { await supabase.rpc('touch_seen'); } catch { /* ignore */ } });
   let pendingResets = 0;
   if (hasPermission(profile, 'temp_password')) {
     try {

@@ -15,7 +15,7 @@ const LABEL: Record<string, { text: string; cls: string }> = {
 };
 
 export default async function AdminChat() {
-  const { supabase } = await requirePermission('chat');
+  const { supabase, profile } = await requirePermission('chat');
   const { data } = await supabase
     .from('chat_conversations')
     .select('id,customer_name,status,last_message_at')
@@ -26,7 +26,10 @@ export default async function AdminChat() {
   return (
     <div className="space-y-4">
       <AutoRefresh seconds={10} />
-      <h1 className="text-xl font-extrabold">الدردشة مع العملاء</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-extrabold">الدردشة مع العملاء</h1>
+        {profile.role === 'owner' && <Link href="/admin/team-activity" className={ui.btnDark}>👁 ادخل شوف الأدمن بيعملوا إيه</Link>}
+      </div>
       <p className="text-sm text-gray-600">المحادثات التي ينتظر فيها العميل ردًا تظهر في الأعلى، والقائمة تتحدّث تلقائيًا كل 10 ثوانٍ.</p>
       {rows.length === 0 ? (
         <p className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">لا توجد محادثات بعد.</p>

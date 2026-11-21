@@ -401,15 +401,21 @@ const formatButtons = (all: boolean) => [
 const AD_TYPE: Record<string, string> = { script: 'سكربت', container: 'بانر Native', banner: 'بانر', link: 'رابط إعلان' };
 
 /** أكواد الإعلانات من البوت (للمالك): قائمة وتفاصيل وتشغيل وإيقاف */
+const adAllowed = async (db: Db, tgId: number | string) => (await getState(db, `adperm:${tgId}`, '')) === '1';
+
 async function adCommands(db: Db, chat: number, cmd: string, arg: string, isOwner: boolean) {
-  if (!isOwner) return say(chat, 'أوامر الإعلانات للمالك بس.');
+  if (!isOwner) return say(chat, 'مالكش صلاحية الإعلانات في البوت. اطلبها من المالك.');
   const { data, error } = await db.from('ad_codes').select('*').order('sort_order').order('created_at');
   if (error) return say(chat, 'لازم تشغّل ملف 031 في Supabase الأول عشان أكواد الإعلانات تشتغل.');
   const rows = (data ?? []) as { id: string; name: string; type: string; src: string | null; ad_key: string | null; width: number | null; height: number | null; link_url: string | null; placement: string; is_active: boolean }[];
   const done = () => revalidateTag('ad-codes');
   if (cmd === '/ads') {
     if (!rows.length) return say(chat, 'مفيش أكواد إعلانات لسه.');
-    return say(chat, ['أكواد الإعلانات (✅ شغّال، ⏸ موقوف):', ...rows.map((r, i) => `${i + 1}. ${r.is_active ? '✅' : '⏸'} ${r.name} — ${AD_TYPE[r.type] ?? r.type}`), '', '/ad 3 ← تفاصيل  |  /ad_on 3  /ad_off 3  |  /ads_on  /ads_off'].join('\n'));
+    return keyboard(
+      chat,
+      ['أكواد الإعلانات (✅ شغّال، ⏸ موقوف):', ...rows.map((r, i) => `${i + 1}. ${r.is_active ? '✅' : '⏸'} ${r.name} — ${AD_TYPE[r.type] ?? r.type}`), '', 'دوس على الزرار تحت عشان تنشر الإعلان أو توقفه:'].join('\n'),
+      [...rows.map((r, i) => [{ text: `${r.is_active ? '⏸ وقّف' : '▶ نشر'} ${i + 1}. ${r.name}`.slice(0, 60), data: `adt:${r.id}:${r.is_active ? '0' : '1'}` }]), [{ text: '▶ نشر الكل', data: 'adt:all:1' }, { text: '⏸ وقّف الكل', data: 'adt:all:0' }]],
+    );
   }
   if (cmd === '/ads_on' || cmd === '/ads_off') {
     await db.from('ad_codes').update({ is_active: cmd === '/ads_on' }).not('id', 'is', null);
@@ -450,7 +456,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         '/exportall  ← نفس الشيء بكل منتجاتك',
         '/upload  ← ارفع الجديد للموقع كمسودة',
         '/category  ← اختار القسم اللي مسوداتك تتحفظ فيه',
-        ...(isOwner ? ['', '/ads  ← قائمة أكواد الإعلانات وحالتها', '/ad 3  ← تفاصيل إعلان', '/ad_on 3  /ad_off 3  ← شغّل أو وقّف إعلان', '/ads_on  /ads_off  ← شغّل أو وقّف كل الإعلانات', '/earnings 7  ← أرباح الإعلانات (Adsterra) آخر 7 أيام', '', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
+        ...(isOwner ? ['', '/ads  ← قائمة أكواد الإعلانات وحالتها', '/ad 3  ← تفاصيل إعلان', '/ad_on 3  /ad_off 3  ← شغّل أو وقّف إعلان', '/adperm 123456789  ← اسمح لأدمن يجيب الإعلانات وينشرها من البوت', '/adperm_off 123456789  ← اسحب منه الصلاحية', '/ads_on  /ads_off  ← شغّل أو وقّف كل الإعلانات', '/earnings 7  ← أرباح الإعلانات (Adsterra) آخر 7 أيام', '', '/addadmin 123456789  ← ضيف أدمن', '/removeadmin 123456789  ← احذف أدمن', '/admins  ← قائمة الأدمن (للمالك فقط)'] : []),
       ].join('\n'),
     );
   }
@@ -528,7 +534,14 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     const f = (n: number, d = 0) => n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
     return say(chat, [`📈 أرباح الإعلانات (Adsterra) — ${days === 1 ? 'النهاردة' : `آخر ${days} يوم`}`, `👁 المشاهدات: ${f(stats.impressions)}`, `👆 النقرات: ${f(stats.clicks)} (${f(stats.ctr, 2)}%)`, `💵 الأرباح: $${f(stats.revenue, 2)}`, `📊 متوسط الأجر لكل 1000 مشاهدة: $${f(stats.cpm, 2)}`, '', '/earnings 1  |  /earnings 7  |  /earnings 30  |  /earnings 90'].join('\n'));
   }
-  if (['/ads', '/ad', '/ad_on', '/ad_off', '/ads_on', '/ads_off'].includes(cmd)) return adCommands(db, chat, cmd, arg, isOwner);
+  if (cmd === '/adperm' || cmd === '/adperm_off') {
+    if (!isOwner) return say(chat, 'الأمر ده للمالك بس.');
+    const id = arg.replace(/\D/g, '');
+    if (id.length < 5) return say(chat, 'اكتب رقم تليجرام الأدمن، مثلًا: /adperm 123456789');
+    await setState(db, `adperm:${id}`, cmd === '/adperm' ? '1' : '');
+    return say(chat, cmd === '/adperm' ? `✅ الأدمن ${id} بقى يقدر يجيب الإعلانات وينشرها ويوقفها من البوت.` : `⏸ اتسحبت من ${id} صلاحية الإعلانات في البوت.`);
+  }
+  if (['/ads', '/ad', '/ad_on', '/ad_off', '/ads_on', '/ads_off'].includes(cmd)) return adCommands(db, chat, cmd, arg, isOwner || (await adAllowed(db, by)));
   return say(chat, 'أمر غير معروف. اكتب /help');
 }
 
@@ -557,6 +570,18 @@ export async function POST(req: Request) {
       await rememberName(db, cq.from);
       const [kind, a1, a2] = (cq.data ?? '').split(':');
       if (kind === 'exp' && (a2 === 'xlsx' || a2 === 'json' || a2 === 'csv')) await exportFiles(db, chatId, cq.from.id, a1 === 'all', a2);
+      else if (kind === 'adt' && (a2 === '0' || a2 === '1')) {
+        if (!owner && !(await adAllowed(db, cq.from.id))) await say(chatId, 'مالكش صلاحية الإعلانات في البوت. اطلبها من المالك.');
+        else if (a1 === 'all') {
+          await db.from('ad_codes').update({ is_active: a2 === '1' }).not('id', 'is', null);
+          revalidateTag('ad-codes');
+          await say(chatId, a2 === '1' ? '✅ اتنشرت كل الإعلانات.' : '⏸ اتوقفت كل الإعلانات.');
+        } else if (/^[0-9a-f-]{36}$/i.test(a1 ?? '')) {
+          const { data: ad } = await db.from('ad_codes').update({ is_active: a2 === '1' }).eq('id', a1).select('name').maybeSingle();
+          revalidateTag('ad-codes');
+          await say(chatId, ad ? `${a2 === '1' ? '✅ اتنشر' : '⏸ اتوقف'}: ${ad.name}\n(بيتطبق على الموقع خلال دقيقة)` : 'الإعلان مش موجود.');
+        }
+      }
       else if (kind === 'cat') {
         let name = '';
         if (a1 !== 'none' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) name = String((await db.from('categories').select('name').eq('id', a1).maybeSingle()).data?.name ?? '');

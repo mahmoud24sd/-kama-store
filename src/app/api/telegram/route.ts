@@ -45,7 +45,17 @@ async function tg(method: string, body: Record<string, unknown>) {
   });
   return (await res.json().catch(() => null)) as { ok?: boolean; result?: Record<string, unknown> } | null;
 }
-const say = (chat: number, text: string) => tg('sendMessage', { chat_id: chat, text }).catch(() => null);
+let logDb: Db | null = null;
+/** نسجّل محادثة أدمن البوت مع البوت (مش بنسجّل محادثة المالك) عشان المالك يقدر يراجعها */
+function logMsg(chat: number | string, dir: 'in' | 'out', text: string) {
+  try {
+    if (!logDb || !text || String(chat) === OWNER() || Number(chat) < 0) return;
+    const db = logDb;
+    void Promise.resolve(db.from('telegram_log').insert({ tg_id: Number(chat), dir, text: text.slice(0, 600) })).then(() => null, () => null);
+    if (Math.random() < 0.02) void Promise.resolve(db.from('telegram_log').delete().lt('created_at', new Date(Date.now() - 30 * 86400000).toISOString())).then(() => null, () => null);
+  } catch { /* ignore */ }
+}
+const say = (chat: number, text: string) => { logMsg(chat, 'out', text); return tg('sendMessage', { chat_id: chat, text }).catch(() => null); };
 
 async function sendDoc(chat: number, data: Buffer | string, filename: string, mime: string, caption: string) {
   const form = new FormData();
@@ -56,7 +66,7 @@ async function sendDoc(chat: number, data: Buffer | string, filename: string, mi
 }
 
 const keyboard = (chat: number, text: string, rows: { text: string; data: string }[][]) =>
-  tg('sendMessage', { chat_id: chat, text, reply_markup: { inline_keyboard: rows.map((r) => r.map((b) => ({ text: b.text, callback_data: b.data }))) } }).catch(() => null);
+  (logMsg(chat, 'out', text), tg('sendMessage', { chat_id: chat, text, reply_markup: { inline_keyboard: rows.map((r) => r.map((b) => ({ text: b.text, callback_data: b.data }))) } }).catch(() => null));
 
 type Db = ReturnType<typeof createAdminClient>;
 
@@ -401,6 +411,26 @@ const formatButtons = (all: boolean) => [
 const AD_TYPE: Record<string, string> = { script: 'سكربت', container: 'بانر Native', banner: 'بانر', link: 'رابط إعلان' };
 
 /** أكواد الإعلانات من البوت (للمالك): قائمة وتفاصيل وتشغيل وإيقاف */
+/** قائمة الأدمن كأزرار (للمالك): دوس على اسم أدمن تشوف شاته مع البوت */
+async function showAdminsList(db: Db, chat: number) {
+  const ids = await getAdmins(db);
+  if (!ids.length) return say(chat, 'مفيش أدمن مضاف. اكتب /addadmin رقم_التليجرام');
+  const rows = await Promise.all(ids.map(async (id) => [{ text: `👤 ${(await getState(db, `name:${id}`, '')) || id}`.slice(0, 60), data: `adm:${id}` }]));
+  return keyboard(chat, 'اختار الأدمن عشان تشوف شاته مع البوت (آخر 25 رسالة):', rows);
+}
+
+async function showAdminChat(db: Db, chat: number, id: string) {
+  const name = (await getState(db, `name:${id}`, '')) || id;
+  const { data, error } = await db.from('telegram_log').select('dir,text,created_at').eq('tg_id', Number(id)).order('created_at', { ascending: false }).limit(25);
+  if (error) return say(chat, 'لازم تشغّل ملف 036 في Supabase الأول عشان أسجّل المحادثات.');
+  const rows = ((data ?? []) as { dir: string; text: string; created_at: string }[]).reverse();
+  if (!rows.length) return say(chat, `مفيش محادثات متسجّلة لـ «${name}» لسه. التسجيل بيبدأ من لحظة تشغيل ملف 036.`);
+  const fmt = new Intl.DateTimeFormat('ar-EG', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+  let out = `💬 شات «${name}» مع البوت:\n`;
+  for (const r of rows) out += `\n[${fmt.format(new Date(r.created_at))}] ${r.dir === 'in' ? '👤' : '🤖'} ${r.text.replace(/\s+/g, ' ').slice(0, 220)}`;
+  return say(chat, out.length > 3900 ? out.slice(out.length - 3900) : out);
+}
+
 const adAllowed = async (db: Db, tgId: number | string) => (await getState(db, `adperm:${tgId}`, '')) === '1';
 
 async function adCommands(db: Db, chat: number, cmd: string, arg: string, isOwner: boolean) {
@@ -440,6 +470,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
   const chat = m.chat.id;
   const by = m.from?.id ?? 0;
 
+  if (isOwner && cmd === '/start') await tg('sendMessage', { chat_id: chat, text: 'القائمة 👇', reply_markup: { keyboard: [[{ text: '👥 الأدمن' }]], resize_keyboard: true, is_persistent: true } }).catch(() => null);
   if (cmd === '/start' || cmd === '/help') {
     return say(
       chat,
@@ -557,6 +588,7 @@ export async function POST(req: Request) {
   try {
     const update = (await req.json()) as { callback_query?: { id: string; from: { id: number; first_name?: string; username?: string }; data?: string; message?: { chat: { id: number } } }; message?: TgMsg; channel_post?: TgMsg; my_chat_member?: { chat: TgMsg['chat']; from: { id: number }; new_chat_member?: { status?: string } } };
     const db = createAdminClient();
+    logDb = db;
     ownerNow = (process.env.TELEGRAM_OWNER_ID ?? '').trim() || (await getState(db, 'owner', ''));
 
     if (update.callback_query) {
@@ -582,6 +614,7 @@ export async function POST(req: Request) {
           await say(chatId, ad ? `${a2 === '1' ? '✅ اتنشر' : '⏸ اتوقف'}: ${ad.name}\n(بيتطبق على الموقع خلال دقيقة)` : 'الإعلان مش موجود.');
         }
       }
+      else if (kind === 'adm' && owner && /^\d{5,}$/.test(a1 ?? '')) await showAdminChat(db, chatId, a1);
       else if (kind === 'cat') {
         let name = '';
         if (a1 !== 'none' && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) name = String((await db.from('categories').select('name').eq('id', a1).maybeSingle()).data?.name ?? '');
@@ -619,6 +652,7 @@ export async function POST(req: Request) {
     const isStaff = isOwner || (m.from?.id !== undefined && (await getAdmins(db)).includes(String(m.from.id)));
     const text = m.text ?? '';
     if (isStaff) await rememberName(db, m.from);
+    if (isStaff && !isOwner && m.chat.type === 'private') logMsg(m.chat.id, 'in', text || (m.photo ? '[صورة]' : m.document ? '[ملف]' : '[رسالة]'));
 
     // ربط المالك بالكود الظاهر في لوحة التحكم (مرة واحدة، ولا يعمل لو فيه مالك بالفعل)
     const claim = text.match(/^\/claim(?:@\w+)?\s+(\d{8})\s*$/i);
@@ -636,6 +670,11 @@ export async function POST(req: Request) {
     if (m.chat.type !== 'private' && isStaff && /^\/allow(@\w+)?$/i.test(text.trim())) {
       await setState(db, 'chats', JSON.stringify([...new Set([...(await getChats(db)), String(m.chat.id)])]));
       await say(m.chat.id, 'تم. هجمع الصور والأسعار من هنا.');
+      return NextResponse.json({ ok: true });
+    }
+
+    if (isOwner && m.chat.type === 'private' && (text.trim() === '👥 الأدمن' || text.trim().toLowerCase() === '/team')) {
+      await showAdminsList(db, m.chat.id);
       return NextResponse.json({ ok: true });
     }
 

@@ -6,7 +6,11 @@ import { hasPermission } from '@/lib/permissions';
 import type { AdCode } from '@/lib/adCodes';
 import { AD_PLACEMENTS } from '@/lib/siteAds';
 import AdCodeTree from '@/components/admin/AdCodeTree';
+import Link from 'next/link';
+import ZoomImage from '@/components/admin/ZoomImage';
 import { ui } from '@/lib/ui';
+
+const ytThumb = (u: string) => { try { const x = new URL(u); const id = x.hostname === 'youtu.be' ? x.pathname.slice(1) : x.hostname.endsWith('youtube.com') ? x.searchParams.get('v') : null; return id ? `https://img.youtube.com/vi/${encodeURIComponent(id)}/hqdefault.jpg` : null; } catch { return null; } };
 
 export const metadata: Metadata = { title: 'أكواد الإعلانات' };
 
@@ -26,6 +30,8 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
     const { data: ps } = await supabase.from('profiles').select('id,full_name').in('id', ids);
     for (const u of ps ?? []) names.set(u.id as string, (u.full_name as string) || 'أدمن');
   }
+  const { data: dAds } = await supabase.from('site_ads').select('id,advertiser,kind,media_url,is_active').order('created_at', { ascending: false }).limit(20);
+  const directAds = (dAds ?? []) as { id: string; advertiser: string; kind: string; media_url: string; is_active: boolean }[];
   const items = codes.map((c) => ({ ...c, adminName: !c.created_by ? 'غير محدد' : profile.role !== 'owner' && c.created_by !== profile.id ? 'أدمن' : names.get(c.created_by) ?? 'أدمن' }));
   const placeLabel = (v: string) => (v === 'global' ? 'كل الصفحات (خلفية)' : AD_PLACEMENTS.find((p) => p.value === v)?.label ?? v);
   const running = codes.filter((c) => c.is_active).length;
@@ -65,6 +71,27 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
         )}
       />
       {codes.length === 0 && !error && <p className="text-sm text-gray-500">مفيش أكواد لسه.</p>}
+
+      {directAds.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-bold">🖼 إعلانات المعلنين (صور وفيديو)</h2>
+            <Link href="/admin/placements" className={ui.btnOutline}>إدارتها ←</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {directAds.map((a) => {
+              const thumb = a.kind === 'image' ? a.media_url : ytThumb(a.media_url);
+              return (
+                <div key={a.id} className={`rounded-lg border border-gray-200 bg-white p-2 text-xs ${a.is_active ? '' : 'opacity-60'}`}>
+                  {thumb ? <ZoomImage src={thumb} alt={a.advertiser} thumbClass="h-20 w-full" /> : <div className="flex h-20 items-center justify-center rounded bg-gray-100 text-gray-500">🎬 فيديو</div>}
+                  <p className="mt-1 truncate font-semibold">{a.advertiser}</p>
+                  <p className="text-gray-500">{a.is_active ? '✅ شغّال' : '⏸ موقوف'} · {a.kind === 'video' ? 'فيديو' : 'صورة'}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {isOwner && (
         <form action={addAdCode} className={`${ui.card} grid gap-3 p-4 md:grid-cols-2`}>

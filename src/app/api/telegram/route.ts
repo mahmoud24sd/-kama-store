@@ -431,6 +431,22 @@ async function showAdminChat(db: Db, chat: number, id: string) {
   return say(chat, out.length > 3900 ? out.slice(out.length - 3900) : out);
 }
 
+const ytThumbUrl = (u: string) => { try { const x = new URL(u); const id = x.hostname === 'youtu.be' ? x.pathname.slice(1) : x.hostname.endsWith('youtube.com') ? x.searchParams.get('v') : null; return id ? `https://img.youtube.com/vi/${encodeURIComponent(id)}/hqdefault.jpg` : null; } catch { return null; } };
+
+/** إعلانات المعلنين (صور/فيديو) كصور مصغّرة في البوت، وتحت كل واحدة زرار نشر/إيقاف */
+async function sendDirectAds(db: Db, chat: number) {
+  const { data } = await db.from('site_ads').select('id,advertiser,placement,kind,media_url,is_active,starts_on,ends_on,impressions,clicks').order('created_at', { ascending: false }).limit(10);
+  const ads = (data ?? []) as { id: string; advertiser: string; placement: string; kind: string; media_url: string; is_active: boolean; starts_on: string; ends_on: string; impressions: number; clicks: number }[];
+  for (const a of ads) {
+    const caption = `${a.is_active ? '✅' : '⏸'} ${a.advertiser}\n${a.kind === 'video' ? '🎬 فيديو' : '🖼 صورة'} · ${a.placement}\n${a.starts_on} ← ${a.ends_on}\n👁 ${a.impressions} · 👆 ${a.clicks}`;
+    const photo = a.kind === 'image' ? a.media_url : ytThumbUrl(a.media_url);
+    const markup = { inline_keyboard: [[{ text: a.is_active ? '⏸ وقّف' : '▶ نشر', callback_data: `sat:${a.id}:${a.is_active ? '0' : '1'}` }]] };
+    logMsg(chat, 'out', caption);
+    if (photo) await tg('sendPhoto', { chat_id: chat, photo, caption, reply_markup: markup }).catch(() => null);
+    else await tg('sendMessage', { chat_id: chat, text: `${caption}\n${a.media_url}`, reply_markup: markup }).catch(() => null);
+  }
+}
+
 const adAllowed = async (db: Db, tgId: number | string) => (await getState(db, `adperm:${tgId}`, '')) === '1';
 
 async function adCommands(db: Db, chat: number, cmd: string, arg: string, isOwner: boolean) {
@@ -441,6 +457,7 @@ async function adCommands(db: Db, chat: number, cmd: string, arg: string, isOwne
   const done = () => revalidateTag('ad-codes');
   if (cmd === '/ads') {
     if (!rows.length) return say(chat, 'مفيش أكواد إعلانات لسه.');
+    await sendDirectAds(db, chat);
     return keyboard(
       chat,
       ['أكواد الإعلانات (✅ شغّال، ⏸ موقوف):', ...rows.map((r, i) => `${i + 1}. ${r.is_active ? '✅' : '⏸'} ${r.name} — ${AD_TYPE[r.type] ?? r.type}`), '', 'دوس على الزرار تحت عشان تنشر الإعلان أو توقفه:'].join('\n'),
@@ -612,6 +629,14 @@ export async function POST(req: Request) {
           const { data: ad } = await db.from('ad_codes').update({ is_active: a2 === '1' }).eq('id', a1).select('name').maybeSingle();
           revalidateTag('ad-codes');
           await say(chatId, ad ? `${a2 === '1' ? '✅ اتنشر' : '⏸ اتوقف'}: ${ad.name}\n(بيتطبق على الموقع خلال دقيقة)` : 'الإعلان مش موجود.');
+        }
+      }
+      else if (kind === 'sat' && (a2 === '0' || a2 === '1') && /^[0-9a-f-]{36}$/i.test(a1 ?? '')) {
+        if (!owner && !(await adAllowed(db, cq.from.id))) await say(chatId, 'مالكش صلاحية الإعلانات في البوت. اطلبها من المالك.');
+        else {
+          const { data: ad } = await db.from('site_ads').update({ is_active: a2 === '1' }).eq('id', a1).select('advertiser').maybeSingle();
+          revalidateTag('site-ads');
+          await say(chatId, ad ? `${a2 === '1' ? '✅ اتنشر' : '⏸ اتوقف'}: إعلان ${ad.advertiser}` : 'الإعلان مش موجود.');
         }
       }
       else if (kind === 'adm' && owner && /^\d{5,}$/.test(a1 ?? '')) await showAdminChat(db, chatId, a1);

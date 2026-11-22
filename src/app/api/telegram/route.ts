@@ -652,7 +652,7 @@ export async function POST(req: Request) {
     const isStaff = isOwner || (m.from?.id !== undefined && (await getAdmins(db)).includes(String(m.from.id)));
     const text = m.text ?? '';
     if (isStaff) await rememberName(db, m.from);
-    if (isStaff && !isOwner && m.chat.type === 'private') logMsg(m.chat.id, 'in', text || (m.photo ? '[صورة]' : m.document ? '[ملف]' : '[رسالة]'));
+    if (isStaff && !isOwner && m.chat.type === 'private') logMsg(m.chat.id, 'in', text || (m.photo ? '[صورة]' : '[رسالة]'));
 
     // ربط المالك بالكود الظاهر في لوحة التحكم (مرة واحدة، ولا يعمل لو فيه مالك بالفعل)
     const claim = text.match(/^\/claim(?:@\w+)?\s+(\d{8})\s*$/i);

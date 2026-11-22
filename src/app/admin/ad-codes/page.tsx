@@ -30,7 +30,7 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
     const { data: ps } = await supabase.from('profiles').select('id,full_name').in('id', ids);
     for (const u of ps ?? []) names.set(u.id as string, (u.full_name as string) || 'أدمن');
   }
-  const { data: dAds } = await supabase.from('site_ads').select('id,advertiser,kind,media_url,is_active').order('created_at', { ascending: false }).limit(20);
+  const { data: dAds, error: dAdsErr } = await supabase.from('site_ads').select('id,advertiser,kind,media_url,is_active').order('created_at', { ascending: false }).limit(20);
   const directAds = (dAds ?? []) as { id: string; advertiser: string; kind: string; media_url: string; is_active: boolean }[];
   const items = codes.map((c) => ({ ...c, adminName: !c.created_by ? 'غير محدد' : profile.role !== 'owner' && c.created_by !== profile.id ? 'أدمن' : names.get(c.created_by) ?? 'أدمن' }));
   const placeLabel = (v: string) => (v === 'global' ? 'كل الصفحات (خلفية)' : AD_PLACEMENTS.find((p) => p.value === v)?.label ?? v);
@@ -71,6 +71,18 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
         )}
       />
       {codes.length === 0 && !error && <p className="text-sm text-gray-500">مفيش أكواد لسه.</p>}
+
+      {directAds.length === 0 && (
+        <section className="space-y-2 rounded-lg border border-gray-200 bg-white p-3 text-sm">
+          <h2 className="font-bold">🖼 إعلانات المعلنين (صور وفيديو)</h2>
+          <p className="text-gray-600">
+            {dAdsErr
+              ? 'الجدول بتاع الإعلانات المباشرة مش موجود. شغّل ملف SQL رقم 029 (و030) في Supabase.'
+              : 'لسه مفيش إعلان صورة أو فيديو مضاف. ضيف واحد من صفحة الأماكن الإعلانية وهيظهر هنا.'}
+          </p>
+          <Link href="/admin/placements" className={ui.btnOutline}>صفحة إعلانات المعلنين ←</Link>
+        </section>
+      )}
 
       {directAds.length > 0 && (
         <section className="space-y-2">

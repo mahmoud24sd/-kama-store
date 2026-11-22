@@ -34,6 +34,7 @@ const LINKS: NavLink[] = [
   { href: '/admin/ad-codes', label: 'أكواد الإعلانات', icon: Link2, perm: 'ad_codes' },
   { href: '/admin/placements', label: 'إعلانات الموقع', icon: Megaphone, perm: 'ads' },
   { href: '/admin/ad-stats', label: 'إحصائيات الإعلانات', icon: BarChart3, perm: 'ad_stats' },
+  { href: '/admin/referrals', label: 'لينك الإحالة بتاعي', icon: Link2 },
   { href: '/admin/earnings', label: 'الأرباح والسحب', icon: Wallet, perm: 'withdraw' },
   { href: '/admin/users', label: 'المستخدمون', icon: UserCog, owner: true },
   { href: '/admin/team', label: 'الفريق والصلاحيات', icon: ShieldCheck, owner: true },

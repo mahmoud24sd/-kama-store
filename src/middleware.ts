@@ -1,11 +1,30 @@
 import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from '@/lib/supabase/config';
 
 // مسارات تتطلب تسجيل دخول (صفحة الأدمن تتحقق من الصلاحية أيضًا على السيرفر + RLS)
 const PROTECTED = ['/account', '/checkout', '/admin', '/sell'];
 
-export async function middleware(request: NextRequest) {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** لينك إحالة (?ref=...): نحفظه في كوكي 30 يوم ونسجّل الزيارة مرة لكل متصفح */
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
+  const res = await core(request);
+  const ref = request.nextUrl.searchParams.get('ref');
+  if (ref && UUID.test(ref) && isSupabaseConfigured && request.cookies.get('kama_ref')?.value !== ref) {
+    res.cookies.set('kama_ref', ref, { maxAge: 60 * 60 * 24 * 30, path: '/', httpOnly: true, sameSite: 'lax' });
+    event.waitUntil(
+      fetch(`${supabaseUrl}/rest/v1/rpc/ref_hit`, {
+        method: 'POST',
+        headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_admin: ref }),
+      }).catch(() => null),
+    );
+  }
+  return res;
+}
+
+async function core(request: NextRequest) {
   if (!isSupabaseConfigured) return NextResponse.next();
 
   const { pathname, search } = request.nextUrl;

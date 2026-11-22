@@ -1,5 +1,6 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { cardPaymentsEnabled, createCardPaymentSession } from '@/lib/payments';
@@ -84,6 +85,11 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   if (error || !data) return { ok: false, error: mapRpcError(error?.message ?? '') };
 
   const order = data as { id: string; order_number: string; total: number };
+
+  try {
+    const ref = (await cookies()).get('kama_ref')?.value;
+    if (ref && /^[0-9a-f-]{36}$/i.test(ref)) await supabase.rpc('ref_order', { p_admin: ref, p_order: order.order_number, p_amount: order.total });
+  } catch { /* العداد مش لازم يوقف الطلب */ }
 
   if (d.saveAddress) {
     const { count } = await supabase.from('addresses').select('id', { count: 'exact', head: true }).eq('user_id', user.id);

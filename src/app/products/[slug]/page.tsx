@@ -127,7 +127,7 @@ export default async function ProductPage({ params }: Props) {
               </p>
             </>
           )}
-          <ShareButtons url={`${getSiteUrl()}/products/${encodeURIComponent(product.slug)}`} name={product.name} price={formatPrice(product.price)} whatsapp={product.affiliate_url ? '' : waBase} />
+          <ShareButtons url={`${getSiteUrl()}/products/${encodeURIComponent(product.slug)}${user ? `?ref=${user.id}` : ''}`} name={product.name} price={formatPrice(product.price)} whatsapp={product.affiliate_url ? '' : waBase} />
         </div>
       </div>
 

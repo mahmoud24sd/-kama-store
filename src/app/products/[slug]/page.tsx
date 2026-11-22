@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import SiteAds from '@/components/layout/SiteAds';
 import ProductGallery from '@/components/product/ProductGallery';
 import PurchasePanel from '@/components/product/PurchasePanel';
+import ShareButtons from '@/components/product/ShareButtons';
+import { getContactSettings, whatsappLink } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 import { affiliateHref } from '@/lib/affiliate';
 import { ui } from '@/lib/ui';
@@ -34,7 +36,8 @@ export default async function ProductPage({ params }: Props) {
   if (!result) notFound();
 
   const { product, related, reviews } = result;
-  const [favorites, user] = await Promise.all([getFavoriteIds(), getUser()]);
+  const [favorites, user, contact] = await Promise.all([getFavoriteIds(), getUser(), getContactSettings()]);
+  const waBase = contact.whatsapp ? whatsappLink(contact.whatsapp) : '';
   const canReview = Boolean(user); // أي مستخدم مسجّل يقدر يقيّم
   const alreadyReviewed = user ? reviews.some((r) => r.user_id === user.id) : false;
 
@@ -124,6 +127,7 @@ export default async function ProductPage({ params }: Props) {
               </p>
             </>
           )}
+          <ShareButtons url={`${getSiteUrl()}/products/${encodeURIComponent(product.slug)}`} name={product.name} price={formatPrice(product.price)} whatsapp={product.affiliate_url ? '' : waBase} />
         </div>
       </div>
 

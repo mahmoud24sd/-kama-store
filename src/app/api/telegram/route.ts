@@ -500,6 +500,7 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
         '/top https://t.me/اسم_القناة  ← أعلى 500 منتج مشاهدةً في القناة',
         '/continue  ← كمّل السحب لو وقف',
         '/count  ← كم منتج محفوظ',
+        '/post ساعة  ← بوست جاهز للنشر في الجروبات لأي منتج منشور',
         '/export  ← ملف بالجديد فقط (تختار إكسل أو JSON أو رفع للموقع)',
         '/exportall  ← نفس الشيء بكل منتجاتك',
         '/upload  ← ارفع الجديد للموقع كمسودة',
@@ -573,6 +574,19 @@ async function command(db: Db, m: TgMsg, text: string, isOwner: boolean) {
     return keyboard(chat, `اختار شكل الملف (الملف الواحد 500 منتج بالكتير):`, formatButtons(all));
   }
   if (cmd === '/upload') return uploadToSite(db, chat, by, false);
+  if (cmd === '/post') {
+    const q = arg.replace(/[%,()]/g, ' ').trim();
+    if (q.length < 2) return say(chat, 'اكتب كلمة من اسم المنتج. مثال:\n/post ساعة');
+    const { data } = await db.from('products').select('name,slug,price,compare_at_price,brand').eq('is_active', true).ilike('name', `%${q}%`).order('created_at', { ascending: false }).limit(5);
+    const rows = (data ?? []) as { name: string; slug: string; price: number; compare_at_price: number | null; brand: string | null }[];
+    if (!rows.length) return say(chat, 'مفيش منتج منشور بالاسم ده.');
+    for (const r of rows) {
+      const off = r.compare_at_price && r.compare_at_price > r.price ? Math.round((1 - r.price / r.compare_at_price) * 100) : 0;
+      const text = [`🔥 ${r.name}`, off ? `💥 خصم ${off}%` : '', `💰 السعر: ${Math.round(r.price)} جنيه${off ? ` (بدل ${Math.round(r.compare_at_price ?? 0)})` : ''}`, '🚚 الدفع عند الاستلام', `🛒 اطلب من هنا:\n${getSiteUrl()}/products/${encodeURIComponent(r.slug)}`].filter(Boolean).join('\n');
+      await say(chat, text);
+    }
+    return;
+  }
   if (cmd === '/earnings' || cmd === '/profit') {
     if (!isOwner) return say(chat, 'الأمر ده للمالك بس.');
     const days = [1, 7, 30, 90].includes(Number(arg)) ? Number(arg) : 7;

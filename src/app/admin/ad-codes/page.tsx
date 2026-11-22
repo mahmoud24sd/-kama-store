@@ -7,6 +7,7 @@ import type { AdCode } from '@/lib/adCodes';
 import { AD_PLACEMENTS } from '@/lib/siteAds';
 import AdCodeTree from '@/components/admin/AdCodeTree';
 import Link from 'next/link';
+import AdPreview from '@/components/admin/AdPreview';
 import ZoomImage from '@/components/admin/ZoomImage';
 import { ui } from '@/lib/ui';
 
@@ -59,6 +60,7 @@ export default async function AdCodesPage({ searchParams }: { searchParams: Prom
               <b className="text-[13px] leading-5">{c.name}</b>
               <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${c.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-200 text-gray-600'}`}>{c.is_active ? 'شغّال' : 'موقوف'}</span>
             </div>
+            {c.type === 'banner' && c.width && c.height && c.src && c.ad_key && <AdPreview adKey={c.ad_key} src={c.src} width={c.width} height={c.height} />}
             {c.type === 'banner' && c.width && c.height && (
               <div className="mt-1 flex items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-[10px] text-gray-500" style={{ width: Math.min(c.width, 220), aspectRatio: `${c.width}/${c.height}`, maxWidth: '100%' }}>{c.width}×{c.height}</div>
             )}
